@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Controlume.Web/Controlume.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Controlume.Tests/Controlume.Tests.csproj" />
+  </Folder>
 </Solution>

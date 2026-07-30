@@ -55,3 +55,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Editors / IDEs
+.vs/
+.idea/
+*.user
+*.userosscache
+*.suo
+
+# EF Core
+*.db
+*.db-shm
+*.db-wal
