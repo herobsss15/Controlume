@@ -1,0 +1,136 @@
+@page "/caixa"
+@inject CaixaService CaixaService
+
+<PageTitle>Caixa</PageTitle>
+
+<h1>Caixa</h1>
+
+@if (mensagemErro is not null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        @mensagemErro
+        <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+    </div>
+}
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else if (caixaAberto is null)
+{
+    <div class="card col-md-5">
+        <div class="card-body">
+            <h2 class="h5">Abrir caixa</h2>
+            <div class="mb-3">
+                <label class="form-label" for="valor-inicial">Valor inicial (troco)</label>
+                <input id="valor-inicial" type="number" step="0.01" min="0" class="form-control" @bind="valorInicial" />
+            </div>
+            <button class="btn btn-primary" @onclick="AbrirAsync">Abrir caixa</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card col-md-7 mb-4">
+        <div class="card-body">
+            <h2 class="h5">Caixa aberto</h2>
+            <p class="mb-1"><strong>Aberto em:</strong> @caixaAberto.DataAbertura.ToLocalTime().ToString("g")</p>
+            <p class="mb-1"><strong>Valor inicial:</strong> @caixaAberto.ValorInicial.ToString("C")</p>
+
+            @if (!mostrandoConfirmacaoFechamento)
+            {
+                <button class="btn btn-outline-danger mt-2" @onclick="PrepararFechamentoAsync">Fechar caixa</button>
+            }
+            else if (resumo is not null)
+            {
+                <hr />
+                <h3 class="h6">Resumo para fechamento</h3>
+                <p class="mb-1"><strong>Quantidade de vendas:</strong> @resumo.QuantidadeVendas</p>
+                <p class="mb-1"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
+                @if (resumo.PorFormaPagamento.Count > 0)
+                {
+                    <ul>
+                        @foreach (var forma in resumo.PorFormaPagamento)
+                        {
+                            <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+                        }
+                    </ul>
+                }
+                <p class="mb-3"><strong>Total esperado em dinheiro:</strong> @ValorEsperadoEmDinheiro().ToString("C")</p>
+                <button class="btn btn-danger me-2" @onclick="ConfirmarFechamentoAsync">Confirmar fechamento</button>
+                <button class="btn btn-outline-secondary" @onclick="() => mostrandoConfirmacaoFechamento = false">Cancelar</button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private FechamentoCaixa? caixaAberto;
+    private ResumoCaixa? resumo;
+    private bool carregando = true;
+    private bool mostrandoConfirmacaoFechamento;
+    private decimal valorInicial;
+    private string? mensagemErro;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        carregando = true;
+        caixaAberto = await CaixaService.ObterAbertoAsync();
+        mostrandoConfirmacaoFechamento = false;
+        resumo = null;
+        carregando = false;
+    }
+
+    private async Task AbrirAsync()
+    {
+        try
+        {
+            await CaixaService.AbrirCaixaAsync(valorInicial);
+            valorInicial = 0;
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
+    }
+
+    private async Task PrepararFechamentoAsync()
+    {
+        if (caixaAberto is null)
+        {
+            return;
+        }
+
+        resumo = await CaixaService.ObterResumoAsync(caixaAberto.Id);
+        mostrandoConfirmacaoFechamento = true;
+    }
+
+    private async Task ConfirmarFechamentoAsync()
+    {
+        if (caixaAberto is null)
+        {
+            return;
+        }
+
+        await CaixaService.FecharCaixaAsync(caixaAberto.Id);
+        await CarregarAsync();
+    }
+
+    private decimal ValorEsperadoEmDinheiro()
+    {
+        if (resumo is null)
+        {
+            return 0;
+        }
+
+        var totalDinheiro = resumo.PorFormaPagamento
+            .Where(f => f.TipoPagamento == TipoPagamento.Dinheiro)
+            .Sum(f => f.Total);
+
+        return resumo.ValorInicial + totalDinheiro;
+    }
+}

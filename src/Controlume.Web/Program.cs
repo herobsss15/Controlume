@@ -1,5 +1,6 @@
 using Controlume.Web.Components;
 using Controlume.Web.Data;
+using Controlume.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,12 @@ var connectionString = builder.Configuration.GetConnectionString("ControlumeDb")
 
 builder.Services.AddDbContext<ControlumeDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
+
+builder.Services.AddScoped<TipoProdutoService>();
+builder.Services.AddScoped<ProdutoService>();
+builder.Services.AddScoped<CaixaService>();
+builder.Services.AddScoped<VendaService>();
+builder.Services.AddScoped<VendaEmAndamentoState>();
 
 var app = builder.Build();
 

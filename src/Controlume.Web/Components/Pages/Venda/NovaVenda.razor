@@ -1,0 +1,263 @@
+@page "/venda"
+@inject ProdutoService ProdutoService
+@inject CaixaService CaixaService
+@inject VendaService VendaService
+@inject VendaEmAndamentoState Carrinho
+
+<PageTitle>Venda</PageTitle>
+
+<h1>Venda</h1>
+
+@if (carregando)
+{
+    <p>Carregando...</p>
+}
+else if (caixaAberto is null)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <span>Não há caixa aberto. É preciso abrir um caixa antes de registrar uma venda.</span>
+        <a class="btn btn-primary btn-sm" href="caixa">Abrir caixa</a>
+    </div>
+}
+else
+{
+    @if (mensagemErro is not null)
+    {
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            @mensagemErro
+            <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+        </div>
+    }
+
+    @if (mensagemSucesso is not null)
+    {
+        <div class="alert alert-success alert-dismissible" role="alert">
+            @mensagemSucesso
+            <button type="button" class="btn-close" @onclick="() => mensagemSucesso = null"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="h5">Produtos</h2>
+            <input class="form-control mb-2" placeholder="Buscar por nome ou artista..." @bind="filtro" @bind:event="oninput" />
+
+            <div style="max-height: 28rem; overflow-y: auto;">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="text-end">Preço</th>
+                            <th class="text-end">Estoque</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var produto in ProdutosFiltrados())
+                        {
+                            <tr>
+                                <td>
+                                    @produto.Nome
+                                    @if (!string.IsNullOrWhiteSpace(produto.ArtistaGrupo))
+                                    {
+                                        <br /><span class="text-muted small">@produto.ArtistaGrupo</span>
+                                    }
+                                </td>
+                                <td class="text-end">@produto.Preco.ToString("C")</td>
+                                <td class="text-end">@produto.QuantidadeEstoque</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary" disabled="@(produto.QuantidadeEstoque <= 0)" @onclick="() => AdicionarAoCarrinho(produto)">Adicionar</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h2 class="h5">Carrinho</h2>
+            @if (Carrinho.Itens.Count == 0)
+            {
+                <p class="text-muted">Nenhum item adicionado.</p>
+            }
+            else
+            {
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th style="width: 4.5rem;">Qtd</th>
+                            <th style="width: 7rem;">Preço venda</th>
+                            <th class="text-end">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Carrinho.Itens)
+                        {
+                            <tr>
+                                <td>@item.NomeProduto</td>
+                                <td><input type="number" min="1" class="form-control form-control-sm" @bind="item.Quantidade" /></td>
+                                <td><input type="number" step="0.01" min="0" class="form-control form-control-sm" @bind="item.PrecoVenda" /></td>
+                                <td class="text-end">@((item.PrecoVenda * item.Quantidade).ToString("C"))</td>
+                                <td class="text-end"><button class="btn btn-sm btn-outline-danger" @onclick="() => Carrinho.RemoverItem(item.ProdutoId)">×</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3 class="h6 text-end">Total: @Carrinho.ValorTotal.ToString("C")</h3>
+
+            <hr />
+
+            <h2 class="h5">Pagamento</h2>
+            <div class="row g-2 align-items-end mb-2">
+                <div class="col-auto">
+                    <label class="form-label" for="tipo-pagamento">Forma</label>
+                    <select id="tipo-pagamento" class="form-select" @bind="tipoPagamentoSelecionado">
+                        <option value="@TipoPagamento.Dinheiro">Dinheiro</option>
+                        <option value="@TipoPagamento.Cartao">Cartão</option>
+                        <option value="@TipoPagamento.Pix">Pix</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label" for="valor-pagamento">Valor</label>
+                    <input id="valor-pagamento" type="number" step="0.01" min="0" class="form-control" @bind="valorPagamento" />
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary" @onclick="AdicionarPagamento">Adicionar pagamento</button>
+                </div>
+                @if (Carrinho.Restante > 0)
+                {
+                    <div class="col-auto">
+                        <button class="btn btn-outline-secondary" @onclick="PreencherRestante">Preencher com o restante</button>
+                    </div>
+                }
+            </div>
+
+            @if (Carrinho.Pagamentos.Count > 0)
+            {
+                <ul class="list-group mb-2">
+                    @for (var i = 0; i < Carrinho.Pagamentos.Count; i++)
+                    {
+                        var index = i;
+                        var pagamento = Carrinho.Pagamentos[index];
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @(pagamento.TipoPagamento.ParaExibicao()): @pagamento.Valor.ToString("C")
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => Carrinho.RemoverPagamento(index)">×</button>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <p class="@(Carrinho.Restante == 0 ? "text-success" : "text-danger") fw-bold">
+                Restante: @Carrinho.Restante.ToString("C")
+            </p>
+
+            <button class="btn btn-success btn-lg" disabled="@(!PodeConfirmar())" @onclick="ConfirmarAsync">Confirmar venda</button>
+            <button class="btn btn-outline-secondary btn-lg" @onclick="Carrinho.Limpar" disabled="@(Carrinho.Itens.Count == 0 && Carrinho.Pagamentos.Count == 0)">Limpar</button>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Produto>? produtos;
+    private FechamentoCaixa? caixaAberto;
+    private bool carregando = true;
+    private string filtro = "";
+    private TipoPagamento tipoPagamentoSelecionado = TipoPagamento.Dinheiro;
+    private decimal valorPagamento;
+    private string? mensagemErro;
+    private string? mensagemSucesso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        caixaAberto = await CaixaService.ObterAbertoAsync();
+        if (caixaAberto is not null)
+        {
+            await CarregarProdutosAsync();
+        }
+        carregando = false;
+    }
+
+    private async Task CarregarProdutosAsync()
+    {
+        produtos = await ProdutoService.ListarAsync(incluirInativos: false);
+    }
+
+    private IEnumerable<Produto> ProdutosFiltrados()
+    {
+        if (produtos is null)
+        {
+            return [];
+        }
+
+        if (string.IsNullOrWhiteSpace(filtro))
+        {
+            return produtos;
+        }
+
+        return produtos.Where(p =>
+            p.Nome.Contains(filtro, StringComparison.OrdinalIgnoreCase) ||
+            (p.ArtistaGrupo is not null && p.ArtistaGrupo.Contains(filtro, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private void AdicionarAoCarrinho(Produto produto)
+    {
+        var jaNoCarrinho = Carrinho.Itens.FirstOrDefault(i => i.ProdutoId == produto.Id)?.Quantidade ?? 0;
+        if (jaNoCarrinho + 1 > produto.QuantidadeEstoque)
+        {
+            mensagemErro = $"Estoque insuficiente para \"{produto.Nome}\" (disponível: {produto.QuantidadeEstoque}).";
+            return;
+        }
+
+        Carrinho.AdicionarItem(produto.Id, produto.Nome, produto.Preco, 1);
+    }
+
+    private void AdicionarPagamento()
+    {
+        if (valorPagamento <= 0)
+        {
+            return;
+        }
+
+        Carrinho.AdicionarPagamento(tipoPagamentoSelecionado, valorPagamento);
+        valorPagamento = 0;
+    }
+
+    private void PreencherRestante()
+    {
+        valorPagamento = Carrinho.Restante;
+    }
+
+    private bool PodeConfirmar() => Carrinho.Itens.Count > 0 && Carrinho.Restante == 0;
+
+    private async Task ConfirmarAsync()
+    {
+        try
+        {
+            var itens = Carrinho.Itens
+                .Select(i => new ItemVendaEntrada(i.ProdutoId, i.Quantidade, i.PrecoVenda))
+                .ToList();
+            var pagamentos = Carrinho.Pagamentos
+                .Select(p => new PagamentoEntrada(p.TipoPagamento, p.Valor))
+                .ToList();
+
+            var venda = await VendaService.ConfirmarVendaAsync(itens, pagamentos);
+
+            Carrinho.Limpar();
+            mensagemSucesso = $"Venda #{venda.Id} registrada com sucesso.";
+            await CarregarProdutosAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+            if (ex is NenhumCaixaAbertoException)
+            {
+                caixaAberto = await CaixaService.ObterAbertoAsync();
+            }
+        }
+    }
+}

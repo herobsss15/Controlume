@@ -1,0 +1,146 @@
+@page "/produtos/novo"
+@page "/produtos/{Id:int}/editar"
+@inject ProdutoService ProdutoService
+@inject TipoProdutoService TipoProdutoService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(Id is null ? "Novo Produto" : "Editar Produto")</PageTitle>
+
+<h1>@(Id is null ? "Novo produto" : "Editar produto")</h1>
+
+@if (tipos is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <EditForm Model="modelo" OnValidSubmit="SalvarAsync" class="col-md-6">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="nome">Nome</label>
+            <InputText id="nome" class="form-control" @bind-Value="modelo.Nome" />
+            <ValidationMessage For="() => modelo.Nome" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="tipo">Tipo</label>
+            <InputSelect id="tipo" class="form-select" @bind-Value="modelo.TipoProdutoId">
+                <option value="">Selecione...</option>
+                @foreach (var tipo in tipos)
+                {
+                    <option value="@tipo.Id">@tipo.Nome@(tipo.Ativo ? "" : " (inativo)")</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => modelo.TipoProdutoId" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="artista">Artista/Grupo <span class="text-muted">(opcional)</span></label>
+            <InputText id="artista" class="form-control" @bind-Value="modelo.ArtistaGrupo" />
+        </div>
+
+        <div class="row">
+            <div class="col mb-3">
+                <label class="form-label" for="preco">Preço (R$)</label>
+                <InputNumber id="preco" class="form-control" @bind-Value="modelo.Preco" step="0.01" />
+                <ValidationMessage For="() => modelo.Preco" />
+            </div>
+            <div class="col mb-3">
+                <label class="form-label" for="estoque">Quantidade em estoque</label>
+                <InputNumber id="estoque" class="form-control" @bind-Value="modelo.QuantidadeEstoque" />
+                <ValidationMessage For="() => modelo.QuantidadeEstoque" />
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private List<TipoProduto>? tipos;
+    private ProdutoFormModel modelo = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        int? tipoAtualId = null;
+
+        if (Id is not null)
+        {
+            var produto = await ProdutoService.ObterPorIdAsync(Id.Value);
+            if (produto is not null)
+            {
+                modelo = new ProdutoFormModel
+                {
+                    Nome = produto.Nome,
+                    TipoProdutoId = produto.TipoProdutoId,
+                    ArtistaGrupo = produto.ArtistaGrupo,
+                    Preco = produto.Preco,
+                    QuantidadeEstoque = produto.QuantidadeEstoque
+                };
+                tipoAtualId = produto.TipoProdutoId;
+            }
+        }
+        else
+        {
+            modelo = new ProdutoFormModel();
+        }
+
+        var tiposCarregados = await TipoProdutoService.ListarAsync(incluirInativos: false);
+        if (tipoAtualId is not null && tiposCarregados.All(t => t.Id != tipoAtualId))
+        {
+            var tipoInativo = await TipoProdutoService.ObterPorIdAsync(tipoAtualId.Value);
+            if (tipoInativo is not null)
+            {
+                tiposCarregados.Add(tipoInativo);
+            }
+        }
+        tipos = tiposCarregados;
+    }
+
+    private async Task SalvarAsync()
+    {
+        var produto = new Produto
+        {
+            Id = Id ?? 0,
+            Nome = modelo.Nome.Trim(),
+            TipoProdutoId = modelo.TipoProdutoId!.Value,
+            ArtistaGrupo = string.IsNullOrWhiteSpace(modelo.ArtistaGrupo) ? null : modelo.ArtistaGrupo.Trim(),
+            Preco = modelo.Preco,
+            QuantidadeEstoque = modelo.QuantidadeEstoque
+        };
+
+        if (Id is null)
+        {
+            await ProdutoService.CriarAsync(produto);
+        }
+        else
+        {
+            await ProdutoService.AtualizarAsync(produto);
+        }
+
+        NavigationManager.NavigateTo("/produtos");
+    }
+
+    private void Cancelar() => NavigationManager.NavigateTo("/produtos");
+
+    private class ProdutoFormModel
+    {
+        [Required(ErrorMessage = "Informe o nome.")]
+        public string Nome { get; set; } = "";
+
+        [Required(ErrorMessage = "Selecione o tipo.")]
+        public int? TipoProdutoId { get; set; }
+
+        public string? ArtistaGrupo { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "O preço não pode ser negativo.")]
+        public decimal Preco { get; set; }
+
+        [Range(0, int.MaxValue, ErrorMessage = "O estoque não pode ser negativo.")]
+        public int QuantidadeEstoque { get; set; }
+    }
+}

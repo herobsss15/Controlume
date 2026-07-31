@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      # Valores vêm de um .env local (não versionado — veja .env.example).
+      POSTGRES_DB: ${POSTGRES_DB:-controlume}
+      POSTGRES_USER: ${POSTGRES_USER:-controlume}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no seu .env local (veja .env.example)}
+    ports:
+      - "5432:5432"
+    volumes:
+      - controlume_pgdata:/var/lib/postgresql/data
+
+volumes:
+  controlume_pgdata:

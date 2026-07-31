@@ -1,0 +1,50 @@
+@page "/vendas/historico"
+@inject VendaService VendaService
+
+<PageTitle>Histórico de Vendas</PageTitle>
+
+<h1>Histórico de Vendas</h1>
+
+@if (vendas is null)
+{
+    <p>Carregando...</p>
+}
+else if (vendas.Count == 0)
+{
+    <p class="text-muted">Nenhuma venda registrada ainda.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Data/Hora</th>
+                <th class="text-end">Itens</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var venda in vendas)
+            {
+                <tr>
+                    <td>@venda.DataHora.ToLocalTime().ToString("g")</td>
+                    <td class="text-end">@venda.QuantidadeItens</td>
+                    <td class="text-end">@venda.ValorTotal.ToString("C")</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="@($"vendas/historico/{venda.Id}")">Ver detalhes</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<VendaResumo>? vendas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendas = await VendaService.ListarHistoricoAsync();
+    }
+}
