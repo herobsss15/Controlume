@@ -55,3 +55,36 @@ public class VendaSemItensException : RegraDeNegocioException
     {
     }
 }
+
+/// <summary>Regras 17 e 18: a checagem de papel também vale na camada de serviço, não só na UI.</summary>
+public class AcessoNegadoException : RegraDeNegocioException
+{
+    public AcessoNegadoException()
+        : base("Seu usuário não tem permissão para executar esta ação.")
+    {
+    }
+}
+
+public class SangriaSemMotivoException : RegraDeNegocioException
+{
+    public SangriaSemMotivoException()
+        : base("Informe o motivo da sangria (Pagamento ou Compra).")
+    {
+    }
+}
+
+public class ValorSangriaInvalidoException : RegraDeNegocioException
+{
+    public ValorSangriaInvalidoException()
+        : base("O valor da sangria precisa ser maior que zero.")
+    {
+    }
+}
+
+public class SaldoInsuficienteParaSangriaException : RegraDeNegocioException
+{
+    public SaldoInsuficienteParaSangriaException(decimal valor, decimal saldoDisponivel)
+        : base($"Sangria de R$ {valor:0.00} deixaria o caixa negativo: há apenas R$ {saldoDisponivel:0.00} em dinheiro na gaveta.")
+    {
+    }
+}
