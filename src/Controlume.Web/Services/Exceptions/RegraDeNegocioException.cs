@@ -88,3 +88,44 @@ public class SaldoInsuficienteParaSangriaException : RegraDeNegocioException
     {
     }
 }
+
+public class DadosDoUsuarioIncompletosException : RegraDeNegocioException
+{
+    public DadosDoUsuarioIncompletosException()
+        : base("Nome e login são obrigatórios.")
+    {
+    }
+}
+
+public class LoginJaExisteException : RegraDeNegocioException
+{
+    public LoginJaExisteException(string login)
+        : base($"Já existe um usuário com o login \"{login}\".")
+    {
+    }
+}
+
+public class SenhaCurtaException : RegraDeNegocioException
+{
+    public SenhaCurtaException(int minimo)
+        : base($"A senha precisa ter pelo menos {minimo} caracteres.")
+    {
+    }
+}
+
+/// <summary>Sem nenhum Admin ativo ninguém mais administra o sistema — nem para desfazer a mudança.</summary>
+public class UltimoAdminException : RegraDeNegocioException
+{
+    public UltimoAdminException()
+        : base("Este é o único administrador ativo. Promova outro usuário a Admin antes de desativá-lo ou trocar o papel dele.")
+    {
+    }
+}
+
+public class NaoPodeDesativarPropriaContaException : RegraDeNegocioException
+{
+    public NaoPodeDesativarPropriaContaException()
+        : base("Você não pode desativar o próprio usuário.")
+    {
+    }
+}

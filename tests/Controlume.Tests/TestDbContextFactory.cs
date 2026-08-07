@@ -45,7 +45,9 @@ public class TestDbContextFactory : IDisposable
     public SangriaService CriarSangriaService(Role? role = Role.Admin)
         => new(Context, CriarCaixaService(role), new UsuarioAtualFake(role));
 
-    public UsuarioService CriarUsuarioService() => new(Context, new PasswordHasher<Usuario>());
+    /// <summary><paramref name="id"/> é o usuário logado, que não pode desativar a própria conta.</summary>
+    public UsuarioService CriarUsuarioService(Role? role = Role.Admin, int? id = null)
+        => new(Context, new PasswordHasher<Usuario>(), new UsuarioAtualFake(role, id));
 
     /// <summary>TipoProdutoId 1 ("Disco") existe sempre: vem do seed via HasData aplicado por EnsureCreated.</summary>
     public async Task<Produto> SeedProdutoAsync(decimal preco, int estoque, int? tipoProdutoId = null, string nome = "Produto de teste")
