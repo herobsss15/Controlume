@@ -1,10 +1,12 @@
 using Controlume.Web.Data;
 using Controlume.Web.Domain;
+using Controlume.Web.Services.Autorizacao;
 using Microsoft.EntityFrameworkCore;
 
 namespace Controlume.Web.Services;
 
-public class ProdutoService(ControlumeDbContext db)
+/// <summary>Regra 17: leitura livre para qualquer papel, escrita só para Admin.</summary>
+public class ProdutoService(ControlumeDbContext db, IUsuarioAtual usuarioAtual)
 {
     public async Task<List<Produto>> ListarAsync(bool incluirInativos = false, int? tipoProdutoId = null)
     {
@@ -25,6 +27,8 @@ public class ProdutoService(ControlumeDbContext db)
 
     public async Task<Produto> CriarAsync(Produto produto)
     {
+        await usuarioAtual.GarantirAdminAsync();
+
         db.Produtos.Add(produto);
         await db.SaveChangesAsync();
         return produto;
@@ -32,6 +36,8 @@ public class ProdutoService(ControlumeDbContext db)
 
     public async Task AtualizarAsync(Produto produtoAtualizado)
     {
+        await usuarioAtual.GarantirAdminAsync();
+
         var produto = await db.Produtos.FirstAsync(p => p.Id == produtoAtualizado.Id);
         produto.Nome = produtoAtualizado.Nome;
         produto.TipoProdutoId = produtoAtualizado.TipoProdutoId;
@@ -43,6 +49,8 @@ public class ProdutoService(ControlumeDbContext db)
 
     public async Task DesativarAsync(int id)
     {
+        await usuarioAtual.GarantirAdminAsync();
+
         var produto = await db.Produtos.FirstAsync(p => p.Id == id);
         produto.Ativo = false;
         await db.SaveChangesAsync();
@@ -50,6 +58,8 @@ public class ProdutoService(ControlumeDbContext db)
 
     public async Task ReativarAsync(int id)
     {
+        await usuarioAtual.GarantirAdminAsync();
+
         var produto = await db.Produtos.FirstAsync(p => p.Id == id);
         produto.Ativo = true;
         await db.SaveChangesAsync();
