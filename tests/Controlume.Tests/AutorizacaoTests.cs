@@ -43,7 +43,7 @@ public class AutorizacaoTests
         await Assert.ThrowsAsync<AcessoNegadoException>(() =>
             db.CriarVendaService(Role.Stakeholder).ConfirmarVendaAsync(
                 [new ItemVendaEntrada(produto.Id, 1, 10m)],
-                [new PagamentoEntrada(TipoPagamento.Dinheiro, 10m)]));
+                [new PagamentoEntrada(Formas.Dinheiro, 10m)]));
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class AutorizacaoTests
         var caixa = await caixaService.AbrirCaixaAsync(100m);
         await db.CriarVendaService(Role.Operador).ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 1, 10m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 10m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 10m)]);
         await db.CriarSangriaService(Role.Operador).RegistrarAsync(MotivoSangria.Pagamento, 30m, null);
         await caixaService.FecharCaixaAsync(caixa.Id);
 

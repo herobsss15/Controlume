@@ -2,6 +2,7 @@
 @inject ProdutoService ProdutoService
 @inject CaixaService CaixaService
 @inject VendaService VendaService
+@inject FormaPagamentoService FormaPagamentoService
 @inject VendaEmAndamentoState Carrinho
 @inject IUsuarioAtual UsuarioAtual
 
@@ -121,11 +122,12 @@ else
             <h2 class="h5">Pagamento</h2>
             <div class="row g-2 align-items-end mb-2">
                 <div class="col-auto">
-                    <label class="form-label" for="tipo-pagamento">Forma</label>
-                    <select id="tipo-pagamento" class="form-select" @bind="tipoPagamentoSelecionado">
-                        <option value="@TipoPagamento.Dinheiro">Dinheiro</option>
-                        <option value="@TipoPagamento.Cartao">Cartão</option>
-                        <option value="@TipoPagamento.Pix">Pix</option>
+                    <label class="form-label" for="forma-pagamento">Forma</label>
+                    <select id="forma-pagamento" class="form-select" @bind="formaPagamentoSelecionadaId">
+                        @foreach (var forma in formasPagamento)
+                        {
+                            <option value="@forma.Id">@forma.Nome</option>
+                        }
                     </select>
                 </div>
                 <div class="col-auto">
@@ -151,7 +153,14 @@ else
                         var index = i;
                         var pagamento = Carrinho.Pagamentos[index];
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @(pagamento.TipoPagamento.ParaExibicao()): @pagamento.Valor.ToString("C")
+                            <span>
+                                @pagamento.NomeFormaPagamento: @pagamento.Valor.ToString("C")
+                                @* Regra 21: avisa no ato que este valor não entra na gaveta hoje. *@
+                                @if (RequerConfirmacao(pagamento.FormaPagamentoId))
+                                {
+                                    <span class="badge text-bg-warning ms-2">recebimento a confirmar</span>
+                                }
+                            </span>
                             <button class="btn btn-sm btn-outline-danger" @onclick="() => Carrinho.RemoverPagamento(index)">×</button>
                         </li>
                     }
@@ -170,11 +179,12 @@ else
 
 @code {
     private List<Produto>? produtos;
+    private List<FormaPagamento> formasPagamento = [];
     private FechamentoCaixa? caixaAberto;
     private bool carregando = true;
     private bool podeEscrever;
     private string filtro = "";
-    private TipoPagamento tipoPagamentoSelecionado = TipoPagamento.Dinheiro;
+    private int formaPagamentoSelecionadaId;
     private decimal valorPagamento;
     private string? mensagemErro;
     private string? mensagemSucesso;
@@ -186,9 +196,14 @@ else
         if (caixaAberto is not null)
         {
             await CarregarProdutosAsync();
+            formasPagamento = await FormaPagamentoService.ListarAsync();
+            formaPagamentoSelecionadaId = formasPagamento.FirstOrDefault()?.Id ?? 0;
         }
         carregando = false;
     }
+
+    private bool RequerConfirmacao(int formaPagamentoId)
+        => formasPagamento.FirstOrDefault(f => f.Id == formaPagamentoId)?.RequerConfirmacaoRecebimento == true;
 
     private async Task CarregarProdutosAsync()
     {
@@ -226,12 +241,13 @@ else
 
     private void AdicionarPagamento()
     {
-        if (valorPagamento <= 0)
+        var forma = formasPagamento.FirstOrDefault(f => f.Id == formaPagamentoSelecionadaId);
+        if (valorPagamento <= 0 || forma is null)
         {
             return;
         }
 
-        Carrinho.AdicionarPagamento(tipoPagamentoSelecionado, valorPagamento);
+        Carrinho.AdicionarPagamento(forma, valorPagamento);
         valorPagamento = 0;
     }
 
@@ -250,7 +266,7 @@ else
                 .Select(i => new ItemVendaEntrada(i.ProdutoId, i.Quantidade, i.PrecoVenda))
                 .ToList();
             var pagamentos = Carrinho.Pagamentos
-                .Select(p => new PagamentoEntrada(p.TipoPagamento, p.Valor))
+                .Select(p => new PagamentoEntrada(p.FormaPagamentoId, p.Valor))
                 .ToList();
 
             var venda = await VendaService.ConfirmarVendaAsync(itens, pagamentos);

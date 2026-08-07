@@ -21,16 +21,28 @@ else
                 <th>Data/Hora</th>
                 <th class="text-end">Itens</th>
                 <th class="text-end">Total</th>
+                <th>Status</th>
                 <th class="text-end">Ações</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var venda in vendas)
             {
-                <tr>
+                @* Regra 26: cancelada continua na listagem, só marcada como tal. *@
+                <tr class="@(venda.Cancelada ? "text-muted" : "")">
                     <td>@venda.DataHora.ToLocalTime().ToString("g")</td>
                     <td class="text-end">@venda.QuantidadeItens</td>
-                    <td class="text-end">@venda.ValorTotal.ToString("C")</td>
+                    <td class="text-end @(venda.Cancelada ? "text-decoration-line-through" : "")">@venda.ValorTotal.ToString("C")</td>
+                    <td>
+                        @if (venda.Cancelada)
+                        {
+                            <span class="badge text-bg-danger">Cancelada</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-success">Registrada</span>
+                        }
+                    </td>
                     <td class="text-end">
                         <a class="btn btn-sm btn-outline-primary" href="@($"vendas/historico/{venda.Id}")">Ver detalhes</a>
                     </td>

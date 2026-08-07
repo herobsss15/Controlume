@@ -68,7 +68,7 @@ public class SangriaServiceTests
         var produto = await db.SeedProdutoAsync(preco: 50m, estoque: 10);
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 1, 50m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 50m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 50m)]);
 
         // Saldo em dinheiro = 100 + 50 = 150.
         await sangriaService.RegistrarAsync(MotivoSangria.Compra, 150m, null);
@@ -102,7 +102,7 @@ public class SangriaServiceTests
         var produto = await db.SeedProdutoAsync(preco: 100m, estoque: 10);
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 1, 100m)],
-            [new PagamentoEntrada(TipoPagamento.Cartao, 60m), new PagamentoEntrada(TipoPagamento.Pix, 40m)]);
+            [new PagamentoEntrada(Formas.Cartao, 60m), new PagamentoEntrada(Formas.Pix, 40m)]);
 
         await Assert.ThrowsAsync<SaldoInsuficienteParaSangriaException>(() =>
             sangriaService.RegistrarAsync(MotivoSangria.Compra, 10m, null));

@@ -56,14 +56,14 @@ public class CaixaServiceTests
 
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 2, 50m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 60m), new PagamentoEntrada(TipoPagamento.Pix, 40m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 60m), new PagamentoEntrada(Formas.Pix, 40m)]);
 
         var resumo = await caixaService.ObterResumoAsync(caixa.Id);
 
         Assert.Equal(1, resumo.QuantidadeVendas);
         Assert.Equal(100m, resumo.TotalVendas);
-        Assert.Equal(60m, resumo.PorFormaPagamento.Single(f => f.TipoPagamento == TipoPagamento.Dinheiro).Total);
-        Assert.Equal(40m, resumo.PorFormaPagamento.Single(f => f.TipoPagamento == TipoPagamento.Pix).Total);
+        Assert.Equal(60m, resumo.PorFormaPagamento.Single(f => f.FormaPagamentoId == Formas.Dinheiro).Total);
+        Assert.Equal(40m, resumo.PorFormaPagamento.Single(f => f.FormaPagamentoId == Formas.Pix).Total);
     }
 
     /// <summary>Regra 14: só o dinheiro entra no saldo da gaveta, e as sangrias saem dele.</summary>
@@ -79,7 +79,7 @@ public class CaixaServiceTests
         var produto = await db.SeedProdutoAsync(preco: 50m, estoque: 10);
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 2, 50m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 60m), new PagamentoEntrada(TipoPagamento.Cartao, 40m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 60m), new PagamentoEntrada(Formas.Cartao, 40m)]);
         await sangriaService.RegistrarAsync(MotivoSangria.Compra, 30m, null);
 
         var resumo = await caixaService.ObterResumoAsync(caixa.Id);
@@ -102,7 +102,7 @@ public class CaixaServiceTests
         var produto = await db.SeedProdutoAsync(preco: 50m, estoque: 10);
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 1, 50m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 50m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 50m)]);
         await sangriaService.RegistrarAsync(MotivoSangria.Pagamento, 20m, "fornecedor");
 
         await caixaService.FecharCaixaAsync(caixa.Id);

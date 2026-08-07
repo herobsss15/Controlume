@@ -61,6 +61,7 @@ builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualBlazor>();
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidacaoDeSessao>();
 
 builder.Services.AddScoped<TipoProdutoService>();
+builder.Services.AddScoped<FormaPagamentoService>();
 builder.Services.AddScoped<ProdutoService>();
 builder.Services.AddScoped<CaixaService>();
 builder.Services.AddScoped<SangriaService>();

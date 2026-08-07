@@ -1,5 +1,6 @@
 @page "/vendas/historico/{Id:int}"
 @inject VendaService VendaService
+@inject IUsuarioAtual UsuarioAtual
 
 <PageTitle>Detalhe da Venda</PageTitle>
 
@@ -9,8 +10,45 @@
 }
 else
 {
-    <h1>Venda #@venda.Id</h1>
+    <h1>
+        Venda #@venda.Id
+        @if (venda.Cancelada)
+        {
+            <span class="badge text-bg-danger align-middle ms-2">Cancelada</span>
+        }
+    </h1>
     <p class="mb-3"><strong>Data/Hora:</strong> @venda.DataHora.ToLocalTime().ToString("g")</p>
+
+    @if (mensagemErro is not null)
+    {
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            @mensagemErro
+            <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+        </div>
+    }
+
+    @* Regra 26: a venda continua no histórico, com o motivo à vista de quem consultar. *@
+    @if (venda.Cancelada)
+    {
+        <div class="alert alert-danger">
+            <p class="mb-1">
+                <strong>Venda cancelada</strong>
+                @if (venda.DataCancelamento is not null)
+                {
+                    <text> em @venda.DataCancelamento.Value.ToLocalTime().ToString("g")</text>
+                }
+                @if (venda.CanceladoPorUsuario is not null)
+                {
+                    <text> por @venda.CanceladoPorUsuario.Nome</text>
+                }.
+            </p>
+            <p class="mb-1"><strong>Motivo:</strong> @venda.MotivoCancelamento</p>
+            <p class="mb-0 small">
+                O estoque dos itens foi devolvido e esta venda não entra em nenhum cálculo de caixa.
+                O cancelamento é definitivo: para corrigir, registre uma venda nova.
+            </p>
+        </div>
+    }
 
     <h2 class="h5">Itens</h2>
     <table class="table table-sm align-middle">
@@ -38,25 +76,123 @@ else
     </table>
 
     <h2 class="h5">Pagamentos</h2>
-    <ul>
-        @foreach (var pagamento in venda.Pagamentos)
-        {
-            <li>@(pagamento.TipoPagamento.ParaExibicao()): @pagamento.Valor.ToString("C")</li>
-        }
-    </ul>
+    <table class="table table-sm align-middle" style="max-width: 40rem;">
+        <tbody>
+            @foreach (var pagamento in venda.Pagamentos)
+            {
+                <tr>
+                    <td>@pagamento.FormaPagamento?.Nome</td>
+                    <td class="text-end">@pagamento.Valor.ToString("C")</td>
+                    <td>
+                        @if (pagamento.Recebido)
+                        {
+                            <span class="badge text-bg-success">Recebido</span>
+                            @if (pagamento.DataRecebimento is not null)
+                            {
+                                <span class="text-muted small ms-1">em @pagamento.DataRecebimento.Value.ToLocalTime().ToString("g")</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-warning">Aguardando recebimento</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @* Regras 21 e 22: o botão só existe enquanto o pagamento está pendente — depois
+                           de confirmado não há caminho de volta, aqui nem no service. *@
+                        @if (!pagamento.Recebido && podeEscrever && !venda.Cancelada)
+                        {
+                            <button class="btn btn-sm btn-outline-success" @onclick="() => MarcarComoRecebidoAsync(pagamento.Id)">Marcar como recebido</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 
     <h3 class="h6 text-end">Total: @venda.ValorTotal.ToString("C")</h3>
 
-    <a class="btn btn-outline-secondary mt-2" href="vendas/historico">Voltar</a>
+    @* Regra 29: Stakeholder nunca vê o botão; Operador só enquanto o caixa da venda está aberto. *@
+    @if (PodeCancelar())
+    {
+        <hr />
+        @if (!mostrandoFormularioCancelamento)
+        {
+            <button class="btn btn-outline-danger" @onclick="() => mostrandoFormularioCancelamento = true">Cancelar venda</button>
+        }
+        else
+        {
+            <div class="card col-lg-7">
+                <div class="card-body">
+                    <h2 class="h5">Cancelar venda</h2>
+                    <p class="text-muted small">
+                        O estoque dos itens volta para o inventário e a venda deixa de contar em qualquer saldo.
+                        Não há como desfazer: para corrigir, registre uma venda nova.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label" for="motivo-cancelamento">Motivo <span class="text-danger">*</span></label>
+                        <textarea id="motivo-cancelamento" class="form-control" rows="2" maxlength="300"
+                                  placeholder="ex: cliente desistiu da compra" @bind="motivoCancelamento" @bind:event="oninput"></textarea>
+                    </div>
+                    <button class="btn btn-danger me-2" disabled="@string.IsNullOrWhiteSpace(motivoCancelamento)" @onclick="CancelarAsync">Confirmar cancelamento</button>
+                    <button class="btn btn-outline-secondary" @onclick="() => mostrandoFormularioCancelamento = false">Voltar</button>
+                </div>
+            </div>
+        }
+    }
+
+    <a class="btn btn-outline-secondary mt-3" href="vendas/historico">Voltar</a>
 }
 
 @code {
     [Parameter] public int Id { get; set; }
 
     private Venda? venda;
+    private bool podeEscrever;
+    private bool ehAdmin;
+    private bool mostrandoFormularioCancelamento;
+    private string motivoCancelamento = "";
+    private string? mensagemErro;
 
     protected override async Task OnParametersSetAsync()
     {
-        venda = await VendaService.ObterDetalheAsync(Id);
+        podeEscrever = await UsuarioAtual.PodeEscreverAsync();
+        ehAdmin = await UsuarioAtual.EhAdminAsync();
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync() => venda = await VendaService.ObterDetalheAsync(Id);
+
+    /// <summary>Regra 29: o Operador só alcança venda de caixa ainda aberto; o Admin, qualquer uma.</summary>
+    private bool PodeCancelar()
+        => venda is { Cancelada: false }
+            && podeEscrever
+            && (ehAdmin || venda.FechamentoCaixa?.Status == StatusCaixa.Aberto);
+
+    private async Task MarcarComoRecebidoAsync(int vendaPagamentoId)
+        => await ExecutarAsync(() => VendaService.MarcarPagamentoComoRecebidoAsync(vendaPagamentoId));
+
+    private async Task CancelarAsync()
+        => await ExecutarAsync(async () =>
+        {
+            await VendaService.CancelarVendaAsync(Id, motivoCancelamento);
+            mostrandoFormularioCancelamento = false;
+            motivoCancelamento = "";
+        });
+
+    private async Task ExecutarAsync(Func<Task> acao)
+    {
+        mensagemErro = null;
+
+        try
+        {
+            await acao();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
+
+        await CarregarAsync();
     }
 }

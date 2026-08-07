@@ -17,7 +17,7 @@ public class VendaServiceTests
         await Assert.ThrowsAsync<NenhumCaixaAbertoException>(() =>
             vendaService.ConfirmarVendaAsync(
                 [new ItemVendaEntrada(produto.Id, 1, 10m)],
-                [new PagamentoEntrada(TipoPagamento.Dinheiro, 10m)]));
+                [new PagamentoEntrada(Formas.Dinheiro, 10m)]));
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class VendaServiceTests
         await Assert.ThrowsAsync<PagamentoDivergenteException>(() =>
             vendaService.ConfirmarVendaAsync(
                 [new ItemVendaEntrada(produto.Id, 2, 10m)], // total = 20
-                [new PagamentoEntrada(TipoPagamento.Dinheiro, 15m)])); // só 15
+                [new PagamentoEntrada(Formas.Dinheiro, 15m)])); // só 15
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class VendaServiceTests
 
         var venda = await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produto.Id, 2, 10m)], // total = 20
-            [new PagamentoEntrada(TipoPagamento.Cartao, 12m), new PagamentoEntrada(TipoPagamento.Dinheiro, 8m)]);
+            [new PagamentoEntrada(Formas.Cartao, 12m), new PagamentoEntrada(Formas.Dinheiro, 8m)]);
 
         Assert.Equal(20m, venda.ValorTotal);
     }
@@ -63,7 +63,7 @@ public class VendaServiceTests
         await Assert.ThrowsAsync<EstoqueInsuficienteException>(() =>
             vendaService.ConfirmarVendaAsync(
                 [new ItemVendaEntrada(produto.Id, 2, 10m)], // pede 2, só tem 1
-                [new PagamentoEntrada(TipoPagamento.Dinheiro, 20m)]));
+                [new PagamentoEntrada(Formas.Dinheiro, 20m)]));
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class VendaServiceTests
         await Assert.ThrowsAsync<EstoqueInsuficienteException>(() =>
             vendaService.ConfirmarVendaAsync(
                 [new ItemVendaEntrada(produtoSeed.Id, 2, 10m)],
-                [new PagamentoEntrada(TipoPagamento.Dinheiro, 20m)]));
+                [new PagamentoEntrada(Formas.Dinheiro, 20m)]));
 
         var produto = await produtoService.ObterPorIdAsync(produtoSeed.Id);
         Assert.Equal(1, produto!.QuantidadeEstoque);
@@ -97,7 +97,7 @@ public class VendaServiceTests
 
         await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produtoSeed.Id, 3, 10m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 30m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 30m)]);
 
         var produto = await produtoService.ObterPorIdAsync(produtoSeed.Id);
         Assert.Equal(2, produto!.QuantidadeEstoque);
@@ -116,7 +116,7 @@ public class VendaServiceTests
         // Vende com desconto: PrecoVenda (8) diverge do preço de tabela no momento (10).
         var venda = await vendaService.ConfirmarVendaAsync(
             [new ItemVendaEntrada(produtoSeed.Id, 1, 8m)],
-            [new PagamentoEntrada(TipoPagamento.Dinheiro, 8m)]);
+            [new PagamentoEntrada(Formas.Dinheiro, 8m)]);
 
         // Preço do produto muda depois da venda já confirmada.
         await produtoService.AtualizarAsync(new Produto
