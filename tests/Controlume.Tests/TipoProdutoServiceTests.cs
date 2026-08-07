@@ -11,8 +11,8 @@ public class TipoProdutoServiceTests
     public async Task ExcluirAsync_LancaExcecao_QuandoHaProdutoReferenciando()
     {
         using var db = new TestDbContextFactory();
-        var tipoService = new TipoProdutoService(db.Context);
-        var produtoService = new ProdutoService(db.Context);
+        var tipoService = db.CriarTipoProdutoService();
+        var produtoService = db.CriarProdutoService();
 
         var tipo = await tipoService.CriarAsync("Fitas K7");
         await produtoService.CriarAsync(new Produto { Nome = "Fita X", TipoProdutoId = tipo.Id, Preco = 5m, QuantidadeEstoque = 1 });
@@ -24,8 +24,8 @@ public class TipoProdutoServiceTests
     public async Task ExcluirAsync_LancaExcecao_MesmoQuandoProdutoReferenciadorEstaInativo()
     {
         using var db = new TestDbContextFactory();
-        var tipoService = new TipoProdutoService(db.Context);
-        var produtoService = new ProdutoService(db.Context);
+        var tipoService = db.CriarTipoProdutoService();
+        var produtoService = db.CriarProdutoService();
 
         var tipo = await tipoService.CriarAsync("Fitas K7");
         var produto = await produtoService.CriarAsync(new Produto { Nome = "Fita X", TipoProdutoId = tipo.Id, Preco = 5m, QuantidadeEstoque = 1 });
@@ -38,7 +38,7 @@ public class TipoProdutoServiceTests
     public async Task ExcluirAsync_RemoveTipo_QuandoNaoHaProdutoReferenciando()
     {
         using var db = new TestDbContextFactory();
-        var tipoService = new TipoProdutoService(db.Context);
+        var tipoService = db.CriarTipoProdutoService();
 
         var tipo = await tipoService.CriarAsync("Categoria sem uso");
         await tipoService.ExcluirAsync(tipo.Id);
@@ -51,7 +51,7 @@ public class TipoProdutoServiceTests
     public async Task DesativarAsync_NaoRemoveOTipo_ApenasMarcaComoInativo()
     {
         using var db = new TestDbContextFactory();
-        var tipoService = new TipoProdutoService(db.Context);
+        var tipoService = db.CriarTipoProdutoService();
         var tipo = await tipoService.CriarAsync("Categoria X");
 
         await tipoService.DesativarAsync(tipo.Id);
@@ -67,7 +67,7 @@ public class TipoProdutoServiceTests
     public async Task ListarAsync_IncluiOsCincoTiposSeedados()
     {
         using var db = new TestDbContextFactory();
-        var tipoService = new TipoProdutoService(db.Context);
+        var tipoService = db.CriarTipoProdutoService();
 
         var tipos = await tipoService.ListarAsync();
 

@@ -1,0 +1,10 @@
+using Controlume.Web.Domain;
+using Controlume.Web.Services.Autorizacao;
+
+namespace Controlume.Tests;
+
+/// <summary>Papel fixo, para o teste escolher quem está "logado" sem cookie nem circuito Blazor.</summary>
+public class UsuarioAtualFake(Role? role) : IUsuarioAtual
+{
+    public Task<Role?> ObterRoleAsync() => Task.FromResult(role);
+}

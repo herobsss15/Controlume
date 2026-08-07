@@ -1,5 +1,7 @@
 using Controlume.Web.Data;
 using Controlume.Web.Domain;
+using Controlume.Web.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +30,22 @@ public class TestDbContextFactory : IDisposable
         Context = new ControlumeDbContext(options);
         Context.Database.EnsureCreated();
     }
+
+    // Os services exigem um IUsuarioAtual (regras 17 e 18). Admin é o padrão para que os testes
+    // de regra de negócio não precisem falar de papel; quem testa autorização passa o seu, e
+    // null representa requisição sem usuário autenticado.
+    public CaixaService CriarCaixaService(Role? role = Role.Admin) => new(Context, new UsuarioAtualFake(role));
+
+    public VendaService CriarVendaService(Role? role = Role.Admin) => new(Context, new UsuarioAtualFake(role));
+
+    public ProdutoService CriarProdutoService(Role? role = Role.Admin) => new(Context, new UsuarioAtualFake(role));
+
+    public TipoProdutoService CriarTipoProdutoService(Role? role = Role.Admin) => new(Context, new UsuarioAtualFake(role));
+
+    public SangriaService CriarSangriaService(Role? role = Role.Admin)
+        => new(Context, CriarCaixaService(role), new UsuarioAtualFake(role));
+
+    public UsuarioService CriarUsuarioService() => new(Context, new PasswordHasher<Usuario>());
 
     /// <summary>TipoProdutoId 1 ("Disco") existe sempre: vem do seed via HasData aplicado por EnsureCreated.</summary>
     public async Task<Produto> SeedProdutoAsync(decimal preco, int estoque, int? tipoProdutoId = null, string nome = "Produto de teste")
