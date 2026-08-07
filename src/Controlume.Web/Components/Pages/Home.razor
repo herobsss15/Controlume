@@ -49,6 +49,11 @@ else
     <div class="col-md-4">
         <a class="btn btn-outline-secondary w-100" href="caixa/historico">Histórico de Caixa</a>
     </div>
+    <AuthorizeView Roles="Admin">
+        <div class="col-md-4">
+            <a class="btn btn-outline-secondary w-100" href="usuarios">Usuários</a>
+        </div>
+    </AuthorizeView>
 </div>
 
 @code {

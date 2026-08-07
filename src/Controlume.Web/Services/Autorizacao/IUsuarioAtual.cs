@@ -11,6 +11,9 @@ public interface IUsuarioAtual
 {
     /// <summary>Papel do usuário autenticado, ou <c>null</c> quando não há usuário (fail closed).</summary>
     Task<Role?> ObterRoleAsync();
+
+    /// <summary>Id do usuário autenticado, usado para impedir que alguém desative a própria conta.</summary>
+    Task<int?> ObterIdAsync();
 }
 
 public static class UsuarioAtualExtensions

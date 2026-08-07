@@ -3,7 +3,9 @@ using Controlume.Web.Data;
 using Controlume.Web.Domain;
 using Controlume.Web.Services;
 using Controlume.Web.Services.Autorizacao;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,6 +40,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ReturnUrlParameter = "returnUrl";
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
+        // Papel e status mudam pela tela de usuários, mas o cookie carrega os claims do login:
+        // sem reconferir, um usuário desativado (ou rebaixado) seguiria dentro até o cookie expirar.
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var db = context.HttpContext.RequestServices.GetRequiredService<ControlumeDbContext>();
+            if (context.Principal is null || !await RevalidacaoDeSessao.ContinuaValidaAsync(db, context.Principal))
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -45,6 +58,7 @@ builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddSingleton<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualBlazor>();
+builder.Services.AddScoped<AuthenticationStateProvider, RevalidacaoDeSessao>();
 
 builder.Services.AddScoped<TipoProdutoService>();
 builder.Services.AddScoped<ProdutoService>();

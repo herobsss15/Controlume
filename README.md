@@ -5,15 +5,27 @@ Sistema de PDV para loja física (discos, CDs, DVDs, eletrônicos e avulsos) —
 
 Toda rota exige usuário autenticado; sem cookie válido o sistema redireciona para `/login`. O papel do usuário decide o que aparece e o que pode ser executado — e a checagem vale tanto na tela quanto na camada de serviço, então esconder o botão não é a única barreira.
 
-| Papel | Venda, caixa e sangria | Cadastro de produto e tipo de produto | Históricos |
-|---|---|---|---|
-| `Admin` | sim | sim | sim |
-| `Operador` | sim | não acessa as telas | sim |
-| `Stakeholder` | só leitura | só leitura | sim |
+| Papel | Venda, caixa e sangria | Cadastro de produto e tipo de produto | Históricos | Usuários |
+|---|---|---|---|---|
+| `Admin` | sim | sim | sim | sim |
+| `Operador` | sim | não acessa as telas | sim | não acessa |
+| `Stakeholder` | só leitura | só leitura | sim | não acessa |
 
-Não existe tela de cadastro de usuário: os usuários vêm da configuração `Usuarios:Seed` e são criados (ou têm a senha atualizada) no startup. Em produção isso são variáveis de ambiente — veja [.env.example](.env.example). Para resetar uma senha, troque a variável e suba de novo. Em Development, os usuários de teste estão em [appsettings.Development.json](src/Controlume.Web/appsettings.Development.json) (`admin`/`admin`, `operador`/`operador`, `stakeholder`/`stakeholder`).
+Os papéis são fixos (`Admin`, `Operador`, `Stakeholder`) — o que se cria são usuários, escolhendo um desses papéis.
 
-Não há recuperação de senha por e-mail — a loja é pequena e o reset é manual, pela configuração.
+### Gerenciando usuários
+
+O Admin cria, edita, desativa e redefine senhas em **/usuarios**. É a única tela que o Stakeholder não enxerga, porque a lista mostra quem tem acesso ao sistema. Senha mínima de 8 caracteres; o login é a identidade do usuário e não muda depois de criado.
+
+Duas travas para ninguém se trancar do lado de fora: não dá para desativar a própria conta, nem para desativar (ou rebaixar) o **último Admin ativo**.
+
+Desativar alguém ou trocar o papel dele vale quase na hora, mesmo com a sessão aberta: o cookie é reconferido contra o banco a cada carregamento de página e o circuito Blazor revalida a cada 5 minutos.
+
+### O primeiro Admin
+
+Como não há tela para criar o primeiro acesso, o Admin de bootstrap vem da configuração `Usuarios:Seed` — em produção, `ADMIN_LOGIN`/`ADMIN_SENHA` no `.env` (veja [.env.example](.env.example)). O startup cria esse usuário se ele não existir e regrava a senha quando ela deixa de bater com a configuração, então **trocar `ADMIN_SENHA` e subir de novo é também o caminho de recuperação** se a senha do Admin se perder. Em Development, o usuário de teste está em [appsettings.Development.json](src/Controlume.Web/appsettings.Development.json) (`admin`/`admin123`) — os demais você cria pela tela.
+
+Não há recuperação de senha por e-mail: quem esquece a senha recebe uma nova do Admin em /usuarios.
 
 ## Caixa, sangria e saldo em dinheiro
 
@@ -26,7 +38,7 @@ Não há recuperação de senha por e-mail — a loja é pequena e o reset é ma
 
 Pensado para um home server atrás de Cloudflare Tunnel: o Kestrel só escuta HTTP na porta 8080 (sem certificado na aplicação), e o Cloudflare cuida do TLS na borda.
 
-1. Copie `.env.example` para `.env`, defina uma `POSTGRES_PASSWORD` forte e uma `ADMIN_SENHA` (ambas são obrigatórias; as demais variáveis têm defaults razoáveis).
+1. Copie `.env.example` para `.env`, defina uma `POSTGRES_PASSWORD` forte e uma `ADMIN_SENHA` (ambas são obrigatórias; as demais variáveis têm defaults razoáveis). Depois de subir, entre com o Admin e crie os outros usuários em `/usuarios`.
 2. Suba tudo:
 
    ```bash

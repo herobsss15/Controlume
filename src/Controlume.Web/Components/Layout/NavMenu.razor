@@ -17,6 +17,9 @@
                         </AuthorizeView>
                         <li class="nav-item"><NavLink class="nav-link" href="vendas/historico">Histórico de Vendas</NavLink></li>
                         <li class="nav-item"><NavLink class="nav-link" href="caixa/historico">Histórico de Caixa</NavLink></li>
+                        <AuthorizeView Roles="Admin" Context="usuarios">
+                            <li class="nav-item"><NavLink class="nav-link" href="usuarios">Usuários</NavLink></li>
+                        </AuthorizeView>
                     </ul>
                     <span class="navbar-text me-3">@context.User.Identity?.Name (@PapelExibicao(context.User))</span>
                     <a class="btn btn-sm btn-outline-light" href="logout">Sair</a>

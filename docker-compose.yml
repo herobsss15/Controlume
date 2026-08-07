@@ -24,21 +24,13 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__ControlumeDb: >-
         Host=db;Port=5432;Database=${POSTGRES_DB:-controlume};Username=${POSTGRES_USER:-controlume};Password=${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no seu .env local (veja .env.example)}
-      # Usuários do sistema: não há tela de cadastro, eles são criados/atualizados no startup
-      # a partir daqui. Trocar a senha é trocar a variável e subir de novo.
+      # Admin de bootstrap: sem ele ninguém entra para criar os demais usuários na tela
+      # /usuarios. Os outros usuários são criados por lá, não aqui. Trocar ADMIN_SENHA e
+      # subir de novo também é o caminho de recuperação se a senha do Admin se perder.
       Usuarios__Seed__0__Nome: ${ADMIN_NOME:-Administrador}
       Usuarios__Seed__0__Login: ${ADMIN_LOGIN:-admin}
       Usuarios__Seed__0__Senha: ${ADMIN_SENHA:?defina ADMIN_SENHA no seu .env local (veja .env.example)}
       Usuarios__Seed__0__Role: Admin
-      # Operador e Stakeholder são opcionais: sem senha configurada o usuário não é criado.
-      Usuarios__Seed__1__Nome: ${OPERADOR_NOME:-Operador}
-      Usuarios__Seed__1__Login: ${OPERADOR_LOGIN:-operador}
-      Usuarios__Seed__1__Senha: ${OPERADOR_SENHA:-}
-      Usuarios__Seed__1__Role: Operador
-      Usuarios__Seed__2__Nome: ${STAKEHOLDER_NOME:-Stakeholder}
-      Usuarios__Seed__2__Login: ${STAKEHOLDER_LOGIN:-stakeholder}
-      Usuarios__Seed__2__Senha: ${STAKEHOLDER_SENHA:-}
-      Usuarios__Seed__2__Role: Stakeholder
     ports:
       - "8080:8080"
     depends_on:

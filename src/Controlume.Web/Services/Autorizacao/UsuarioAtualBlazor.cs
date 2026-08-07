@@ -13,12 +13,19 @@ public class UsuarioAtualBlazor(AuthenticationStateProvider authenticationStateP
 {
     public async Task<Role?> ObterRoleAsync()
     {
-        var state = await authenticationStateProvider.GetAuthenticationStateAsync();
-        if (state.User.Identity?.IsAuthenticated != true)
-        {
-            return null;
-        }
+        var user = await ObterUsuarioAsync();
+        return Enum.TryParse<Role>(user?.FindFirstValue(ClaimTypes.Role), out var role) ? role : null;
+    }
 
-        return Enum.TryParse<Role>(state.User.FindFirstValue(ClaimTypes.Role), out var role) ? role : null;
+    public async Task<int?> ObterIdAsync()
+    {
+        var user = await ObterUsuarioAsync();
+        return int.TryParse(user?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+    }
+
+    private async Task<ClaimsPrincipal?> ObterUsuarioAsync()
+    {
+        var state = await authenticationStateProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated == true ? state.User : null;
     }
 }

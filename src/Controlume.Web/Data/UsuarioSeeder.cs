@@ -16,9 +16,9 @@ public class UsuarioSeed
 }
 
 /// <summary>
-/// Não há tela de cadastro de usuário: os poucos usuários fixos vêm da configuração
-/// (variáveis de ambiente em produção) e são sincronizados no startup. Trocar a senha é
-/// trocar a variável e reiniciar — o hash é regravado quando deixa de bater com a config.
+/// Bootstrap do primeiro Admin: sem ele ninguém consegue entrar para criar os demais usuários
+/// na tela de /usuarios. Também é o caminho de recuperação quando a senha do Admin se perde —
+/// trocar a variável e reiniciar regrava o hash. O dia a dia de usuários é na tela, não aqui.
 /// </summary>
 public static class UsuarioSeeder
 {
@@ -38,6 +38,13 @@ public static class UsuarioSeeder
                     "Usuário de seed \"{Login}\" ignorado: Login e Senha precisam estar configurados.",
                     seed.Login ?? "(sem login)");
                 continue;
+            }
+
+            if (seed.Senha.Length < UsuarioService.TamanhoMinimoSenha)
+            {
+                logger.LogWarning(
+                    "A senha configurada para \"{Login}\" tem menos de {Minimo} caracteres, o mínimo exigido na tela de usuários.",
+                    seed.Login, UsuarioService.TamanhoMinimoSenha);
             }
 
             var login = UsuarioService.NormalizarLogin(seed.Login);

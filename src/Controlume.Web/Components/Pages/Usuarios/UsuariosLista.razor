@@ -1,0 +1,281 @@
+@page "/usuarios"
+@* Única tela fechada também para o Stakeholder: a lista mostra quem tem acesso ao sistema. *@
+@attribute [Authorize(Roles = "Admin")]
+@inject UsuarioService UsuarioService
+
+<PageTitle>Usuários</PageTitle>
+
+<h1>Usuários</h1>
+<p class="text-muted">
+    Não há recuperação de senha por e-mail: quem esquece a senha recebe uma nova aqui.
+    O login não muda depois de criado.
+</p>
+
+@if (mensagemErro is not null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        @mensagemErro
+        <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+    </div>
+}
+
+@if (mensagemSucesso is not null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        @mensagemSucesso
+        <button type="button" class="btn-close" @onclick="() => mensagemSucesso = null"></button>
+    </div>
+}
+
+<div class="card col-lg-9 mb-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Novo usuário</h2>
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label" for="novo-nome">Nome</label>
+                <input id="novo-nome" class="form-control" @bind="novoNome" @bind:event="oninput" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="novo-login">Login</label>
+                <input id="novo-login" class="form-control" autocomplete="off" @bind="novoLogin" @bind:event="oninput" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="nova-senha">Senha</label>
+                <input id="nova-senha" type="password" class="form-control" autocomplete="new-password" @bind="novaSenha" @bind:event="oninput" />
+                <div class="form-text">Mínimo de @UsuarioService.TamanhoMinimoSenha caracteres.</div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="novo-papel">Papel</label>
+                <select id="novo-papel" class="form-select" @bind="novoPapel">
+                    @foreach (var papel in Papeis)
+                    {
+                        <option value="@papel">@papel</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <p class="text-muted small mt-2 mb-2">@DescricaoDoPapel(novoPapel)</p>
+        <button class="btn btn-primary" disabled="@(!PodeCriar())" @onclick="CriarAsync">Adicionar usuário</button>
+    </div>
+</div>
+
+@if (usuarios is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Login</th>
+                <th>Papel</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var usuario in usuarios)
+            {
+                <tr>
+                    <td style="max-width: 18rem;">
+                        @if (editandoId == usuario.Id)
+                        {
+                            <input class="form-control form-control-sm" @bind="nomeEmEdicao" @bind:event="oninput" />
+                        }
+                        else
+                        {
+                            @usuario.Nome
+                            @if (usuario.Id == usuarioLogadoId)
+                            {
+                                <span class="badge text-bg-light ms-1">você</span>
+                            }
+                        }
+                    </td>
+                    <td>@usuario.Login</td>
+                    <td>
+                        @if (editandoId == usuario.Id)
+                        {
+                            <select class="form-select form-select-sm" @bind="papelEmEdicao">
+                                @foreach (var papel in Papeis)
+                                {
+                                    <option value="@papel">@papel</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            @usuario.Role
+                        }
+                    </td>
+                    <td>
+                        @if (usuario.Ativo)
+                        {
+                            <span class="badge text-bg-success">Ativo</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Inativo</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (editandoId == usuario.Id)
+                        {
+                            <button class="btn btn-sm btn-primary me-1" disabled="@string.IsNullOrWhiteSpace(nomeEmEdicao)" @onclick="() => SalvarEdicaoAsync(usuario.Id)">Salvar</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+                        }
+                        else if (redefinindoSenhaId == usuario.Id)
+                        {
+                            <div class="input-group input-group-sm justify-content-end" style="max-width: 22rem; margin-left: auto;">
+                                <input type="password" class="form-control" placeholder="Nova senha" autocomplete="new-password" @bind="senhaEmEdicao" @bind:event="oninput" />
+                                <button class="btn btn-primary" disabled="@(senhaEmEdicao.Length < UsuarioService.TamanhoMinimoSenha)" @onclick="() => SalvarSenhaAsync(usuario.Id)">Salvar</button>
+                                <button class="btn btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => IniciarEdicao(usuario)">Editar</button>
+                            <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => IniciarRedefinicaoDeSenha(usuario)">Redefinir senha</button>
+                            @if (usuario.Ativo)
+                            {
+                                <button class="btn btn-sm btn-outline-warning" disabled="@(usuario.Id == usuarioLogadoId)" @onclick="() => DesativarAsync(usuario.Id)">Desativar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => ReativarAsync(usuario.Id)">Reativar</button>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private static readonly Role[] Papeis = Enum.GetValues<Role>();
+
+    [CascadingParameter] private Task<AuthenticationState>? EstadoAutenticacao { get; set; }
+
+    private List<Usuario>? usuarios;
+    private int? usuarioLogadoId;
+    private int? editandoId;
+    private int? redefinindoSenhaId;
+    private string nomeEmEdicao = "";
+    private Role papelEmEdicao;
+    private string senhaEmEdicao = "";
+    private string novoNome = "";
+    private string novoLogin = "";
+    private string novaSenha = "";
+    private Role novoPapel = Role.Operador;
+    private string? mensagemErro;
+    private string? mensagemSucesso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EstadoAutenticacao is not null)
+        {
+            var state = await EstadoAutenticacao;
+            usuarioLogadoId = int.TryParse(
+                state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var id) ? id : null;
+        }
+
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync() => usuarios = await UsuarioService.ListarAsync();
+
+    private bool PodeCriar()
+        => !string.IsNullOrWhiteSpace(novoNome)
+            && !string.IsNullOrWhiteSpace(novoLogin)
+            && novaSenha.Length >= UsuarioService.TamanhoMinimoSenha;
+
+    private static string DescricaoDoPapel(Role role) => role switch
+    {
+        Role.Admin => "Admin: acessa tudo, incluindo cadastros e esta tela de usuários.",
+        Role.Operador => "Operador: venda, caixa, sangria e históricos — sem os cadastros.",
+        Role.Stakeholder => "Stakeholder: vê as telas de operação, mas não executa nenhuma ação.",
+        _ => ""
+    };
+
+    private async Task CriarAsync()
+    {
+        await ExecutarAsync(async () =>
+        {
+            var usuario = await UsuarioService.CriarAsync(novoNome, novoLogin, novaSenha, novoPapel);
+            mensagemSucesso = $"Usuário \"{usuario.Login}\" criado como {usuario.Role}.";
+            novoNome = "";
+            novoLogin = "";
+            novaSenha = "";
+            novoPapel = Role.Operador;
+        });
+    }
+
+    private void IniciarEdicao(Usuario usuario)
+    {
+        Cancelar();
+        editandoId = usuario.Id;
+        nomeEmEdicao = usuario.Nome;
+        papelEmEdicao = usuario.Role;
+    }
+
+    private void IniciarRedefinicaoDeSenha(Usuario usuario)
+    {
+        Cancelar();
+        redefinindoSenhaId = usuario.Id;
+    }
+
+    private void Cancelar()
+    {
+        editandoId = null;
+        redefinindoSenhaId = null;
+        senhaEmEdicao = "";
+    }
+
+    private async Task SalvarEdicaoAsync(int id)
+        => await ExecutarAsync(async () =>
+        {
+            await UsuarioService.AtualizarAsync(id, nomeEmEdicao, papelEmEdicao);
+            mensagemSucesso = "Usuário atualizado.";
+            Cancelar();
+        });
+
+    private async Task SalvarSenhaAsync(int id)
+        => await ExecutarAsync(async () =>
+        {
+            await UsuarioService.RedefinirSenhaAsync(id, senhaEmEdicao);
+            mensagemSucesso = "Senha redefinida. Passe a nova senha para o usuário.";
+            Cancelar();
+        });
+
+    private async Task DesativarAsync(int id)
+        => await ExecutarAsync(async () =>
+        {
+            await UsuarioService.DesativarAsync(id);
+            mensagemSucesso = "Usuário desativado: a sessão dele cai em poucos minutos.";
+        });
+
+    private async Task ReativarAsync(int id)
+        => await ExecutarAsync(async () =>
+        {
+            await UsuarioService.ReativarAsync(id);
+            mensagemSucesso = "Usuário reativado.";
+        });
+
+    private async Task ExecutarAsync(Func<Task> acao)
+    {
+        mensagemErro = null;
+        mensagemSucesso = null;
+
+        try
+        {
+            await acao();
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
+    }
+}
