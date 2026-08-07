@@ -12,13 +12,14 @@ COPY ["src/Controlume.Web/Controlume.Web.csproj", "src/Controlume.Web/"]
 RUN dotnet restore "src/Controlume.Web/Controlume.Web.csproj"
 COPY src/Controlume.Web/ src/Controlume.Web/
 WORKDIR "/src/src/Controlume.Web"
-RUN dotnet build "Controlume.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "Controlume.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false
+# Sem --no-restore de propósito: com só o .csproj presente, o restore acima não
+# descobre os static web assets do framework (ex.: _framework/blazor.web.js) e,
+# como o publish não roda restore de novo, o arquivo nunca vai pro output publicado
+# (404 em produção mesmo com o build "passando"). Rodar restore aqui de novo é
+# rápido (pacotes já em cache) e resolve os assets corretamente com o código completo.
+RUN dotnet publish "Controlume.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Controlume.Web.dll"]
