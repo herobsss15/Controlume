@@ -11,7 +11,8 @@ public class ItemCarrinho(int produtoId, string nomeProduto, decimal precoTabela
     public int Quantidade { get; set; } = quantidade;
 }
 
-public record PagamentoCarrinho(TipoPagamento TipoPagamento, decimal Valor);
+/// <summary>O nome viaja junto só para a lista do carrinho não precisar reconsultar o cadastro.</summary>
+public record PagamentoCarrinho(int FormaPagamentoId, string NomeFormaPagamento, decimal Valor);
 
 /// <summary>
 /// Carrinho da venda em andamento, mantido em memória por circuito Blazor Server (Scoped).
@@ -44,7 +45,8 @@ public class VendaEmAndamentoState
 
     public void RemoverItem(int produtoId) => _itens.RemoveAll(i => i.ProdutoId == produtoId);
 
-    public void AdicionarPagamento(TipoPagamento tipo, decimal valor) => _pagamentos.Add(new PagamentoCarrinho(tipo, valor));
+    public void AdicionarPagamento(FormaPagamento forma, decimal valor)
+        => _pagamentos.Add(new PagamentoCarrinho(forma.Id, forma.Nome, valor));
 
     public void RemoverPagamento(int index)
     {

@@ -129,3 +129,54 @@ public class NaoPodeDesativarPropriaContaException : RegraDeNegocioException
     {
     }
 }
+
+/// <summary>Regra 24: mesmo padrão da regra 8 para TipoProduto — desativa, não exclui.</summary>
+public class FormaPagamentoReferenciadaException : RegraDeNegocioException
+{
+    public FormaPagamentoReferenciadaException(string nome)
+        : base($"A forma de pagamento \"{nome}\" não pode ser excluída porque há vendas registradas com ela. Desative-a em vez de excluir.")
+    {
+    }
+}
+
+public class FormaPagamentoInvalidaException : RegraDeNegocioException
+{
+    public FormaPagamentoInvalidaException()
+        : base("Selecione uma forma de pagamento ativa para cada pagamento da venda.")
+    {
+    }
+}
+
+/// <summary>Regra 22: a confirmação de recebimento é de mão única.</summary>
+public class PagamentoJaRecebidoException : RegraDeNegocioException
+{
+    public PagamentoJaRecebidoException()
+        : base("Este pagamento já está marcado como recebido, e essa marcação não pode ser desfeita.")
+    {
+    }
+}
+
+public class MotivoCancelamentoObrigatorioException : RegraDeNegocioException
+{
+    public MotivoCancelamentoObrigatorioException()
+        : base("Informe o motivo do cancelamento da venda.")
+    {
+    }
+}
+
+public class VendaJaCanceladaException : RegraDeNegocioException
+{
+    public VendaJaCanceladaException(int vendaId)
+        : base($"A venda #{vendaId} já está cancelada. O cancelamento é definitivo: para corrigir, registre uma venda nova.")
+    {
+    }
+}
+
+/// <summary>Regra 29: caixa já fechado é território de Admin.</summary>
+public class CancelamentoDeCaixaFechadoException : RegraDeNegocioException
+{
+    public CancelamentoDeCaixaFechadoException()
+        : base("Esta venda pertence a um caixa já fechado: só um administrador pode cancelá-la.")
+    {
+    }
+}

@@ -10,6 +10,7 @@ public class ControlumeDbContext(DbContextOptions<ControlumeDbContext> options) 
     public DbSet<Venda> Vendas => Set<Venda>();
     public DbSet<ItemVenda> ItensVenda => Set<ItemVenda>();
     public DbSet<VendaPagamento> VendaPagamentos => Set<VendaPagamento>();
+    public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
     public DbSet<FechamentoCaixa> FechamentosCaixa => Set<FechamentoCaixa>();
     public DbSet<Sangria> Sangrias => Set<Sangria>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();

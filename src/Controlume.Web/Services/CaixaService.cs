@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Controlume.Web.Services;
 
-public record ResumoFormaPagamento(TipoPagamento TipoPagamento, decimal Total);
+public record ResumoFormaPagamento(int FormaPagamentoId, string Nome, bool ContaComoCaixaFisico, decimal Total);
 
 public record ResumoCaixa(
     int FechamentoCaixaId,
@@ -57,28 +57,45 @@ public class CaixaService(ControlumeDbContext db, IUsuarioAtual usuarioAtual)
             .Select(c => c.SaldoFinal!.Value)
             .FirstOrDefaultAsync();
 
-    /// <summary>Regra 9: total sempre calculado a partir de Venda/VendaPagamento, nunca de um contador em cache.</summary>
+    /// <summary>
+    /// Regra 9: total sempre calculado a partir de Venda/VendaPagamento, nunca de um contador em
+    /// cache. Regra 28: venda cancelada fica de fora de tudo, como se não tivesse acontecido.
+    /// </summary>
     public async Task<ResumoCaixa> ObterResumoAsync(int caixaId)
     {
         var caixa = await db.FechamentosCaixa.AsNoTracking().FirstAsync(c => c.Id == caixaId);
 
         var vendas = await db.Vendas.AsNoTracking()
-            .Where(v => v.FechamentoCaixaId == caixaId)
+            .Where(v => v.FechamentoCaixaId == caixaId && !v.Cancelada)
             .ToListAsync();
 
-        var porFormaPagamento = await db.VendaPagamentos.AsNoTracking()
-            .Where(p => p.Venda!.FechamentoCaixaId == caixaId)
-            .GroupBy(p => p.TipoPagamento)
-            .Select(g => new ResumoFormaPagamento(g.Key, g.Sum(p => p.Valor)))
+        // O agrupamento é só pela FK — agrupar direto por campos da forma não é traduzível. Nome e
+        // flag entram depois, da tabela inteira, que tem meia dúzia de linhas.
+        var totaisPorForma = await db.VendaPagamentos.AsNoTracking()
+            .Where(p => p.Venda!.FechamentoCaixaId == caixaId && !p.Venda.Cancelada)
+            .GroupBy(p => p.FormaPagamentoId)
+            .Select(g => new { FormaPagamentoId = g.Key, Total = g.Sum(p => p.Valor) })
             .ToListAsync();
+
+        var formas = await db.FormasPagamento.AsNoTracking().ToDictionaryAsync(f => f.Id);
+
+        var porFormaPagamento = totaisPorForma
+            .Select(t => new ResumoFormaPagamento(
+                t.FormaPagamentoId,
+                formas[t.FormaPagamentoId].Nome,
+                formas[t.FormaPagamentoId].ContaComoCaixaFisico,
+                t.Total))
+            .OrderBy(f => f.Nome)
+            .ToList();
 
         var totalSangrias = await db.Sangrias.AsNoTracking()
             .Where(s => s.FechamentoCaixaId == caixaId)
             .SumAsync(s => (decimal?)s.Valor) ?? 0m;
 
-        // Regra 14: só o que ocupa a gaveta entra na conta — cartão e Pix ficam de fora.
+        // Regras 14 e 23: só o que ocupa a gaveta entra na conta, e quem decide isso é a flag da
+        // forma de pagamento — não mais uma comparação com o nome "Dinheiro".
         var totalEmDinheiro = porFormaPagamento
-            .Where(f => f.TipoPagamento == TipoPagamento.Dinheiro)
+            .Where(f => f.ContaComoCaixaFisico)
             .Sum(f => f.Total);
 
         return new ResumoCaixa(

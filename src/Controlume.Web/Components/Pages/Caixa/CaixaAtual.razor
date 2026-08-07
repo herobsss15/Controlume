@@ -73,7 +73,13 @@ else
                             <ul class="mb-1">
                                 @foreach (var forma in resumo.PorFormaPagamento)
                                 {
-                                    <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+                                    <li>
+                                        @forma.Nome: @forma.Total.ToString("C")
+                                        @if (!forma.ContaComoCaixaFisico)
+                                        {
+                                            <span class="text-muted small">(fora da gaveta)</span>
+                                        }
+                                    </li>
                                 }
                             </ul>
                         }
@@ -82,7 +88,8 @@ else
                             <strong>Saldo em dinheiro na gaveta:</strong>
                             <span class="badge text-bg-primary">@resumo.SaldoEmDinheiro.ToString("C")</span>
                         </p>
-                        <div class="form-text">Inicial + vendas em dinheiro − sangrias. Cartão e Pix não entram nesta conta.</div>
+                        @* Regra 23: quem entra nesta conta é a flag "conta como caixa físico" da forma. *@
+                        <div class="form-text">Inicial + vendas nas formas que ocupam a gaveta − sangrias. Vendas canceladas não contam.</div>
                     }
 
                     @if (!mostrandoConfirmacaoFechamento)

@@ -22,13 +22,31 @@ else
         @((resumo.SaldoFinal ?? resumo.SaldoEmDinheiro).ToString("C"))
     </p>
 
+    @* Regra 30: o SaldoFinal é histórico congelado e não se reescreve. Cancelar uma venda depois
+       do fechamento abre esta diferença, que se acerta na mão na próxima abertura/sangria. *@
+    @if (resumo.SaldoFinal is not null && resumo.SaldoFinal != resumo.SaldoEmDinheiro)
+    {
+        <div class="alert alert-warning">
+            O saldo final registrado no fechamento (<strong>@resumo.SaldoFinal.Value.ToString("C")</strong>) não bate com
+            o recalculado hoje (<strong>@resumo.SaldoEmDinheiro.ToString("C")</strong>), porque alguma venda deste caixa
+            foi cancelada depois do fechamento. O valor registrado é histórico e não muda — a diferença precisa
+            ser acertada manualmente na próxima abertura ou sangria.
+        </div>
+    }
+
     @if (resumo.PorFormaPagamento.Count > 0)
     {
         <h2 class="h5">Por forma de pagamento</h2>
         <ul>
             @foreach (var forma in resumo.PorFormaPagamento)
             {
-                <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+                <li>
+                    @forma.Nome: @forma.Total.ToString("C")
+                    @if (!forma.ContaComoCaixaFisico)
+                    {
+                        <span class="text-muted small">(fora da gaveta)</span>
+                    }
+                </li>
             }
         </ul>
     }

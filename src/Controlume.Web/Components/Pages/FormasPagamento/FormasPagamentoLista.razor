@@ -1,0 +1,244 @@
+@page "/formas-pagamento"
+@* Regra 17: cadastro é tela de Admin. Regra 18: Stakeholder entra, mas só para consultar. *@
+@attribute [Authorize(Roles = "Admin,Stakeholder")]
+@inject FormaPagamentoService FormaPagamentoService
+@inject IUsuarioAtual UsuarioAtual
+
+<PageTitle>Formas de Pagamento</PageTitle>
+
+<h1>Formas de Pagamento</h1>
+<p class="text-muted">
+    <strong>Conta como caixa físico</strong> marca o que ocupa a gaveta: só essas formas entram no saldo
+    em dinheiro e no limite da sangria. <strong>Requer confirmação de recebimento</strong> é para canais
+    com repasse posterior (Mercado Livre e afins), em que o dinheiro entra dias depois da venda.
+</p>
+
+@if (mensagemErro is not null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        @mensagemErro
+        <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+    </div>
+}
+
+@if (ehAdmin)
+{
+    <div class="card col-lg-8 mb-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Nova forma de pagamento</h2>
+            <div class="mb-2" style="max-width: 25rem;">
+                <label class="form-label" for="novo-nome">Nome</label>
+                <input id="novo-nome" class="form-control" placeholder="ex: Mercado Livre" @bind="novoNome" @bind:event="oninput" />
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="novo-caixa-fisico" @bind="novoContaComoCaixaFisico" />
+                <label class="form-check-label" for="novo-caixa-fisico">Conta como caixa físico</label>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="novo-requer-confirmacao" @bind="novoRequerConfirmacao" />
+                <label class="form-check-label" for="novo-requer-confirmacao">Requer confirmação de recebimento</label>
+            </div>
+            <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(novoNome)" @onclick="CriarAsync">Adicionar</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">Seu usuário acessa esta tela em modo somente leitura.</div>
+}
+
+<div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="mostrar-inativas" @bind="mostrarInativas" @bind:after="CarregarAsync" />
+    <label class="form-check-label" for="mostrar-inativas">Mostrar inativas</label>
+</div>
+
+@if (formas is null)
+{
+    <p>Carregando...</p>
+}
+else if (formas.Count == 0)
+{
+    <p class="text-muted">Nenhuma forma de pagamento cadastrada.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Caixa físico</th>
+                <th>Confirmação de recebimento</th>
+                <th>Status</th>
+                @if (ehAdmin)
+                {
+                    <th class="text-end">Ações</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forma in formas)
+            {
+                <tr>
+                    <td style="max-width: 20rem;">
+                        @if (ehAdmin && editandoId == forma.Id)
+                        {
+                            <input class="form-control form-control-sm" @bind="nomeEmEdicao" @bind:event="oninput" />
+                        }
+                        else
+                        {
+                            @forma.Nome
+                        }
+                    </td>
+                    <td>
+                        @if (ehAdmin && editandoId == forma.Id)
+                        {
+                            <input class="form-check-input" type="checkbox" aria-label="Conta como caixa físico" @bind="caixaFisicoEmEdicao" />
+                        }
+                        else if (forma.ContaComoCaixaFisico)
+                        {
+                            <span class="badge text-bg-primary">Sim</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Não</span>
+                        }
+                    </td>
+                    <td>
+                        @if (ehAdmin && editandoId == forma.Id)
+                        {
+                            <input class="form-check-input" type="checkbox" aria-label="Requer confirmação de recebimento" @bind="requerConfirmacaoEmEdicao" />
+                        }
+                        else if (forma.RequerConfirmacaoRecebimento)
+                        {
+                            <span class="badge text-bg-warning">Sim</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Não</span>
+                        }
+                    </td>
+                    <td>
+                        @if (forma.Ativo)
+                        {
+                            <span class="badge text-bg-success">Ativa</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Inativa</span>
+                        }
+                    </td>
+                    @* Regra 18: para quem não é Admin a coluna de ações nem existe. *@
+                    @if (ehAdmin)
+                    {
+                        <td class="text-end">
+                            @if (editandoId == forma.Id)
+                            {
+                                <button class="btn btn-sm btn-primary me-1" disabled="@string.IsNullOrWhiteSpace(nomeEmEdicao)" @onclick="() => SalvarEdicaoAsync(forma.Id)">Salvar</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelarEdicao">Cancelar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => IniciarEdicao(forma)">Editar</button>
+                                @if (forma.Ativo)
+                                {
+                                    <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => DesativarAsync(forma.Id)">Desativar</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-success me-1" @onclick="() => ReativarAsync(forma.Id)">Reativar</button>
+                                }
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ExcluirAsync(forma.Id)">Excluir</button>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FormaPagamento>? formas;
+    private bool mostrarInativas;
+    private bool ehAdmin;
+    private string? mensagemErro;
+    private int? editandoId;
+    private string nomeEmEdicao = "";
+    private bool caixaFisicoEmEdicao;
+    private bool requerConfirmacaoEmEdicao;
+    private string novoNome = "";
+    private bool novoContaComoCaixaFisico;
+    private bool novoRequerConfirmacao;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ehAdmin = await UsuarioAtual.EhAdminAsync();
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        formas = await FormaPagamentoService.ListarAsync(incluirInativas: mostrarInativas);
+    }
+
+    private async Task CriarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(novoNome))
+        {
+            return;
+        }
+
+        await ExecutarAsync(async () =>
+        {
+            await FormaPagamentoService.CriarAsync(novoNome.Trim(), novoContaComoCaixaFisico, novoRequerConfirmacao);
+            novoNome = "";
+            novoContaComoCaixaFisico = false;
+            novoRequerConfirmacao = false;
+        });
+    }
+
+    private void IniciarEdicao(FormaPagamento forma)
+    {
+        editandoId = forma.Id;
+        nomeEmEdicao = forma.Nome;
+        caixaFisicoEmEdicao = forma.ContaComoCaixaFisico;
+        requerConfirmacaoEmEdicao = forma.RequerConfirmacaoRecebimento;
+    }
+
+    private void CancelarEdicao() => editandoId = null;
+
+    private async Task SalvarEdicaoAsync(int id)
+    {
+        if (string.IsNullOrWhiteSpace(nomeEmEdicao))
+        {
+            return;
+        }
+
+        await ExecutarAsync(async () =>
+        {
+            await FormaPagamentoService.AtualizarAsync(id, nomeEmEdicao.Trim(), caixaFisicoEmEdicao, requerConfirmacaoEmEdicao);
+            editandoId = null;
+        });
+    }
+
+    private async Task DesativarAsync(int id) => await ExecutarAsync(() => FormaPagamentoService.DesativarAsync(id));
+
+    private async Task ReativarAsync(int id) => await ExecutarAsync(() => FormaPagamentoService.ReativarAsync(id));
+
+    private async Task ExcluirAsync(int id) => await ExecutarAsync(() => FormaPagamentoService.ExcluirAsync(id));
+
+    private async Task ExecutarAsync(Func<Task> acao)
+    {
+        mensagemErro = null;
+
+        try
+        {
+            await acao();
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
+    }
+}
