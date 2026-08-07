@@ -23,6 +23,12 @@ builder.Services.AddScoped<VendaEmAndamentoState>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ControlumeDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -30,15 +36,16 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-else
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<ControlumeDbContext>();
-    db.Database.Migrate();
-}
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
+// Em produção o TLS é terminado no Cloudflare Tunnel e o Kestrel só escuta HTTP
+// (sem porta HTTPS configurada), então UseHttpsRedirection() ficaria só logando
+// warning a cada request. Em Development ela continua valendo para o profile "https".
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAntiforgery();
 

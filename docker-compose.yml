@@ -10,6 +10,25 @@ services:
       - "5432:5432"
     volumes:
       - controlume_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-controlume} -d ${POSTGRES_DB:-controlume}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__ControlumeDb: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-controlume};Username=${POSTGRES_USER:-controlume};Password=${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no seu .env local (veja .env.example)}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   controlume_pgdata:
