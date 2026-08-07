@@ -1,0 +1,42 @@
+@page "/caixa/historico/{Id:int}"
+@inject CaixaService CaixaService
+
+<PageTitle>Detalhe do Caixa</PageTitle>
+
+@if (resumo is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <h1>Caixa #@resumo.FechamentoCaixaId</h1>
+    <p class="mb-1"><strong>Aberto em:</strong> @resumo.DataAbertura.ToLocalTime().ToString("g")</p>
+    <p class="mb-1"><strong>Fechado em:</strong> @(resumo.DataFechamento is null ? "Ainda aberto" : resumo.DataFechamento.Value.ToLocalTime().ToString("g"))</p>
+    <p class="mb-1"><strong>Valor inicial:</strong> @resumo.ValorInicial.ToString("C")</p>
+    <p class="mb-1"><strong>Quantidade de vendas:</strong> @resumo.QuantidadeVendas</p>
+    <p class="mb-3"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
+
+    @if (resumo.PorFormaPagamento.Count > 0)
+    {
+        <h2 class="h5">Por forma de pagamento</h2>
+        <ul>
+            @foreach (var forma in resumo.PorFormaPagamento)
+            {
+                <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+            }
+        </ul>
+    }
+
+    <a class="btn btn-outline-secondary mt-2" href="caixa/historico">Voltar</a>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ResumoCaixa? resumo;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        resumo = await CaixaService.ObterResumoAsync(Id);
+    }
+}

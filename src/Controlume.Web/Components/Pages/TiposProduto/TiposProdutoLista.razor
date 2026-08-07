@@ -1,0 +1,165 @@
+@page "/tipos-produto"
+@inject TipoProdutoService TipoProdutoService
+
+<PageTitle>Tipos de Produto</PageTitle>
+
+<h1>Tipos de Produto</h1>
+
+@if (mensagemErro is not null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        @mensagemErro
+        <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+    </div>
+}
+
+<div class="input-group mb-4" style="max-width: 30rem;">
+    <input class="form-control" placeholder="Nome do novo tipo" @bind="novoNome" @bind:event="oninput" />
+    <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(novoNome)" @onclick="CriarAsync">Adicionar</button>
+</div>
+
+<div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="mostrar-inativos" @bind="mostrarInativos" @bind:after="CarregarAsync" />
+    <label class="form-check-label" for="mostrar-inativos">Mostrar inativos</label>
+</div>
+
+@if (tipos is null)
+{
+    <p>Carregando...</p>
+}
+else if (tipos.Count == 0)
+{
+    <p class="text-muted">Nenhum tipo de produto cadastrado.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var tipo in tipos)
+            {
+                <tr>
+                    <td style="max-width: 20rem;">
+                        @if (editandoId == tipo.Id)
+                        {
+                            <input class="form-control form-control-sm" @bind="nomeEmEdicao" @bind:event="oninput" />
+                        }
+                        else
+                        {
+                            @tipo.Nome
+                        }
+                    </td>
+                    <td>
+                        @if (tipo.Ativo)
+                        {
+                            <span class="badge text-bg-success">Ativo</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Inativo</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (editandoId == tipo.Id)
+                        {
+                            <button class="btn btn-sm btn-primary me-1" disabled="@string.IsNullOrWhiteSpace(nomeEmEdicao)" @onclick="() => SalvarEdicaoAsync(tipo.Id)">Salvar</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CancelarEdicao">Cancelar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => IniciarEdicao(tipo)">Editar</button>
+                            @if (tipo.Ativo)
+                            {
+                                <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => DesativarAsync(tipo.Id)">Desativar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-success me-1" @onclick="() => ReativarAsync(tipo.Id)">Reativar</button>
+                            }
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ExcluirAsync(tipo.Id)">Excluir</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TipoProduto>? tipos;
+    private bool mostrarInativos;
+    private string? mensagemErro;
+    private int? editandoId;
+    private string nomeEmEdicao = "";
+    private string novoNome = "";
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        tipos = await TipoProdutoService.ListarAsync(incluirInativos: mostrarInativos);
+    }
+
+    private async Task CriarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(novoNome))
+        {
+            return;
+        }
+
+        await TipoProdutoService.CriarAsync(novoNome.Trim());
+        novoNome = "";
+        await CarregarAsync();
+    }
+
+    private void IniciarEdicao(TipoProduto tipo)
+    {
+        editandoId = tipo.Id;
+        nomeEmEdicao = tipo.Nome;
+    }
+
+    private void CancelarEdicao() => editandoId = null;
+
+    private async Task SalvarEdicaoAsync(int id)
+    {
+        if (string.IsNullOrWhiteSpace(nomeEmEdicao))
+        {
+            return;
+        }
+
+        await TipoProdutoService.AtualizarAsync(id, nomeEmEdicao.Trim());
+        editandoId = null;
+        await CarregarAsync();
+    }
+
+    private async Task DesativarAsync(int id)
+    {
+        await TipoProdutoService.DesativarAsync(id);
+        await CarregarAsync();
+    }
+
+    private async Task ReativarAsync(int id)
+    {
+        await TipoProdutoService.ReativarAsync(id);
+        await CarregarAsync();
+    }
+
+    private async Task ExcluirAsync(int id)
+    {
+        try
+        {
+            await TipoProdutoService.ExcluirAsync(id);
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
+    }
+}

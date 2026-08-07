@@ -1,0 +1,62 @@
+@page "/vendas/historico/{Id:int}"
+@inject VendaService VendaService
+
+<PageTitle>Detalhe da Venda</PageTitle>
+
+@if (venda is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <h1>Venda #@venda.Id</h1>
+    <p class="mb-3"><strong>Data/Hora:</strong> @venda.DataHora.ToLocalTime().ToString("g")</p>
+
+    <h2 class="h5">Itens</h2>
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th class="text-end">Qtd</th>
+                <th class="text-end">Preço tabela</th>
+                <th class="text-end">Preço venda</th>
+                <th class="text-end">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in venda.Itens)
+            {
+                <tr>
+                    <td>@item.Produto?.Nome</td>
+                    <td class="text-end">@item.Quantidade</td>
+                    <td class="text-end">@item.PrecoTabela.ToString("C")</td>
+                    <td class="text-end @(item.PrecoVenda != item.PrecoTabela ? "text-warning fw-bold" : "")">@item.PrecoVenda.ToString("C")</td>
+                    <td class="text-end">@((item.PrecoVenda * item.Quantidade).ToString("C"))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h5">Pagamentos</h2>
+    <ul>
+        @foreach (var pagamento in venda.Pagamentos)
+        {
+            <li>@(pagamento.TipoPagamento.ParaExibicao()): @pagamento.Valor.ToString("C")</li>
+        }
+    </ul>
+
+    <h3 class="h6 text-end">Total: @venda.ValorTotal.ToString("C")</h3>
+
+    <a class="btn btn-outline-secondary mt-2" href="vendas/historico">Voltar</a>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Venda? venda;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        venda = await VendaService.ObterDetalheAsync(Id);
+    }
+}

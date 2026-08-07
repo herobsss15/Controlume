@@ -1,0 +1,61 @@
+@page "/caixa/historico"
+@inject CaixaService CaixaService
+
+<PageTitle>Histórico de Caixa</PageTitle>
+
+<h1>Histórico de Caixa</h1>
+
+@if (caixas is null)
+{
+    <p>Carregando...</p>
+}
+else if (caixas.Count == 0)
+{
+    <p class="text-muted">Nenhum fechamento de caixa registrado ainda.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Abertura</th>
+                <th>Fechamento</th>
+                <th class="text-end">Valor inicial</th>
+                <th>Status</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var caixa in caixas)
+            {
+                <tr>
+                    <td>@caixa.DataAbertura.ToLocalTime().ToString("g")</td>
+                    <td>@(caixa.DataFechamento is null ? "—" : caixa.DataFechamento.Value.ToLocalTime().ToString("g"))</td>
+                    <td class="text-end">@caixa.ValorInicial.ToString("C")</td>
+                    <td>
+                        @if (caixa.Status == StatusCaixa.Aberto)
+                        {
+                            <span class="badge text-bg-success">Aberto</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Fechado</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="@($"caixa/historico/{caixa.Id}")">Ver detalhes</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FechamentoCaixa>? caixas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        caixas = await CaixaService.ListarHistoricoAsync();
+    }
+}
