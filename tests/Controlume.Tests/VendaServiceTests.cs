@@ -11,7 +11,7 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_LancaExcecao_QuandoNaoHaCaixaAberto()
     {
         using var db = new TestDbContextFactory();
-        var vendaService = new VendaService(db.Context);
+        var vendaService = db.CriarVendaService();
         var produto = await db.SeedProdutoAsync(preco: 10m, estoque: 5);
 
         await Assert.ThrowsAsync<NenhumCaixaAbertoException>(() =>
@@ -24,8 +24,8 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_LancaExcecao_QuandoSomaDePagamentosNaoBateComTotal()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
         await caixaService.AbrirCaixaAsync(0m);
         var produto = await db.SeedProdutoAsync(preco: 10m, estoque: 5);
 
@@ -39,8 +39,8 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_AceitaPagamentoDivididoQuandoSomaBate()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
         await caixaService.AbrirCaixaAsync(0m);
         var produto = await db.SeedProdutoAsync(preco: 10m, estoque: 5);
 
@@ -55,8 +55,8 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_LancaExcecao_QuandoEstoqueInsuficiente()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
         await caixaService.AbrirCaixaAsync(0m);
         var produto = await db.SeedProdutoAsync(preco: 10m, estoque: 1);
 
@@ -70,9 +70,9 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_NaoAlteraEstoque_QuandoVendaFalha()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
-        var produtoService = new ProdutoService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
+        var produtoService = db.CriarProdutoService();
         await caixaService.AbrirCaixaAsync(0m);
         var produtoSeed = await db.SeedProdutoAsync(preco: 10m, estoque: 1);
 
@@ -89,9 +89,9 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_DecrementaEstoqueAposVendaValida()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
-        var produtoService = new ProdutoService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
+        var produtoService = db.CriarProdutoService();
         await caixaService.AbrirCaixaAsync(0m);
         var produtoSeed = await db.SeedProdutoAsync(preco: 10m, estoque: 5);
 
@@ -107,9 +107,9 @@ public class VendaServiceTests
     public async Task ConfirmarVendaAsync_MantemPrecoTabelaCongelado_MesmoAposMudarPrecoDoProduto()
     {
         using var db = new TestDbContextFactory();
-        var caixaService = new CaixaService(db.Context);
-        var vendaService = new VendaService(db.Context);
-        var produtoService = new ProdutoService(db.Context);
+        var caixaService = db.CriarCaixaService();
+        var vendaService = db.CriarVendaService();
+        var produtoService = db.CriarProdutoService();
         await caixaService.AbrirCaixaAsync(0m);
         var produtoSeed = await db.SeedProdutoAsync(preco: 10m, estoque: 5);
 

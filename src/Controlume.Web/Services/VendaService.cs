@@ -1,5 +1,6 @@
 using Controlume.Web.Data;
 using Controlume.Web.Domain;
+using Controlume.Web.Services.Autorizacao;
 using Controlume.Web.Services.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +12,7 @@ public record PagamentoEntrada(TipoPagamento TipoPagamento, decimal Valor);
 
 public record VendaResumo(int Id, DateTime DataHora, decimal ValorTotal, int QuantidadeItens);
 
-public class VendaService(ControlumeDbContext db)
+public class VendaService(ControlumeDbContext db, IUsuarioAtual usuarioAtual)
 {
     /// <summary>
     /// Confirma a venda dentro de uma única transação: valida caixa aberto (regra 1),
@@ -20,6 +21,8 @@ public class VendaService(ControlumeDbContext db)
     /// </summary>
     public async Task<Venda> ConfirmarVendaAsync(IReadOnlyList<ItemVendaEntrada> itens, IReadOnlyList<PagamentoEntrada> pagamentos)
     {
+        await usuarioAtual.GarantirPodeEscreverAsync();
+
         if (itens.Count == 0)
         {
             throw new VendaSemItensException();

@@ -9,6 +9,7 @@ public class FechamentoCaixaConfiguration : IEntityTypeConfiguration<FechamentoC
     public void Configure(EntityTypeBuilder<FechamentoCaixa> builder)
     {
         builder.Property(c => c.ValorInicial).HasPrecision(10, 2);
+        builder.Property(c => c.SaldoFinal).HasPrecision(10, 2);
 
         builder.Property(c => c.Status)
             .HasConversion<string>()
