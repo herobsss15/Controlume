@@ -21,6 +21,7 @@ else
                 <th>Abertura</th>
                 <th>Fechamento</th>
                 <th class="text-end">Valor inicial</th>
+                <th class="text-end">Saldo final</th>
                 <th>Status</th>
                 <th class="text-end">Ações</th>
             </tr>
@@ -32,6 +33,7 @@ else
                     <td>@caixa.DataAbertura.ToLocalTime().ToString("g")</td>
                     <td>@(caixa.DataFechamento is null ? "—" : caixa.DataFechamento.Value.ToLocalTime().ToString("g"))</td>
                     <td class="text-end">@caixa.ValorInicial.ToString("C")</td>
+                    <td class="text-end">@(caixa.SaldoFinal is null ? "—" : caixa.SaldoFinal.Value.ToString("C"))</td>
                     <td>
                         @if (caixa.Status == StatusCaixa.Aberto)
                         {

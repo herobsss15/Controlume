@@ -1,13 +1,26 @@
 @page "/produtos"
 @inject ProdutoService ProdutoService
 @inject TipoProdutoService TipoProdutoService
+@inject IUsuarioAtual UsuarioAtual
 
 <PageTitle>Produtos</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">Produtos</h1>
-    <a class="btn btn-primary" href="produtos/novo">Novo produto</a>
+    @* Regra 17: consultar produto é liberado; cadastrar e editar, só Admin. *@
+    @if (ehAdmin)
+    {
+        <a class="btn btn-primary" href="produtos/novo">Novo produto</a>
+    }
 </div>
+
+@if (mensagemErro is not null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        @mensagemErro
+        <button type="button" class="btn-close" @onclick="() => mensagemErro = null"></button>
+    </div>
+}
 
 <div class="row g-3 mb-3">
     <div class="col-auto">
@@ -50,7 +63,10 @@ else
                 <th class="text-end">Preço</th>
                 <th class="text-end">Estoque</th>
                 <th>Status</th>
-                <th class="text-end">Ações</th>
+                @if (ehAdmin)
+                {
+                    <th class="text-end">Ações</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -72,17 +88,20 @@ else
                             <span class="badge text-bg-secondary">Inativo</span>
                         }
                     </td>
-                    <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary me-1" href="@($"produtos/{produto.Id}/editar")">Editar</a>
-                        @if (produto.Ativo)
-                        {
-                            <button class="btn btn-sm btn-outline-warning" @onclick="() => DesativarAsync(produto.Id)">Desativar</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-outline-success" @onclick="() => ReativarAsync(produto.Id)">Reativar</button>
-                        }
-                    </td>
+                    @if (ehAdmin)
+                    {
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary me-1" href="@($"produtos/{produto.Id}/editar")">Editar</a>
+                            @if (produto.Ativo)
+                            {
+                                <button class="btn btn-sm btn-outline-warning" @onclick="() => DesativarAsync(produto.Id)">Desativar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => ReativarAsync(produto.Id)">Reativar</button>
+                            }
+                        </td>
+                    }
                 </tr>
             }
         </tbody>
@@ -93,10 +112,13 @@ else
     private List<Produto>? produtos;
     private List<TipoProduto>? tipos;
     private bool mostrarInativos;
+    private bool ehAdmin;
     private string filtroTipoProdutoId = "";
+    private string? mensagemErro;
 
     protected override async Task OnInitializedAsync()
     {
+        ehAdmin = await UsuarioAtual.EhAdminAsync();
         tipos = await TipoProdutoService.ListarAsync(incluirInativos: true);
         await CarregarAsync();
     }
@@ -107,15 +129,20 @@ else
         produtos = await ProdutoService.ListarAsync(incluirInativos: mostrarInativos, tipoProdutoId: tipoId);
     }
 
-    private async Task DesativarAsync(int id)
-    {
-        await ProdutoService.DesativarAsync(id);
-        await CarregarAsync();
-    }
+    private async Task DesativarAsync(int id) => await ExecutarAsync(() => ProdutoService.DesativarAsync(id));
 
-    private async Task ReativarAsync(int id)
+    private async Task ReativarAsync(int id) => await ExecutarAsync(() => ProdutoService.ReativarAsync(id));
+
+    private async Task ExecutarAsync(Func<Task> acao)
     {
-        await ProdutoService.ReativarAsync(id);
-        await CarregarAsync();
+        try
+        {
+            await acao();
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
     }
 }

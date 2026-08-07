@@ -1,0 +1,101 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@* Regra 16: a tela de login roda em SSR estático porque HttpContext.SignInAsync só grava o
+   cookie enquanto a resposta HTTP está sendo montada — dentro do circuito interativo não há
+   mais resposta para escrever. Ver App.razor, que escolhe o render mode por página. *@
+@attribute [ExcludeFromInteractiveRouting]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Endpoints
+@inject UsuarioService UsuarioService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Entrar</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h4 mb-3">Entrar no Controlume</h1>
+
+                @if (erro is not null)
+                {
+                    <div class="alert alert-danger" role="alert">@erro</div>
+                }
+
+                <EditForm Model="modelo" FormName="login" OnValidSubmit="EntrarAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label" for="login">Login</label>
+                        <InputText id="login" class="form-control" autocomplete="username" @bind-Value="modelo!.Login" />
+                        <ValidationMessage For="() => modelo!.Login" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="senha">Senha</label>
+                        <InputText id="senha" type="password" class="form-control" autocomplete="current-password" @bind-Value="modelo!.Senha" />
+                        <ValidationMessage For="() => modelo!.Senha" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Sem inicializador: no POST o binding sobrescreve a propriedade (BL0008).
+    [SupplyParameterFromForm] private LoginModel? modelo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")] private string? ReturnUrl { get; set; }
+
+    private string? erro;
+
+    protected override void OnInitialized() => modelo ??= new LoginModel();
+
+    private async Task EntrarAsync()
+    {
+        var usuario = await UsuarioService.ValidarCredenciaisAsync(modelo!.Login, modelo!.Senha);
+        if (usuario is null)
+        {
+            // Mensagem única de propósito: não entrega se o login existe ou se só a senha errou.
+            erro = "Login ou senha inválidos.";
+            return;
+        }
+
+        var identity = new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+                new Claim(ClaimTypes.Name, usuario.Nome),
+                new Claim(ClaimTypes.Role, usuario.Role.ToString())
+            ],
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties { IsPersistent = true });
+
+        NavigationManager.NavigateTo(DestinoDepoisDoLogin());
+    }
+
+    /// <summary>Só aceita caminho local: "//host" ou "https://host" no returnUrl seria redirect aberto.</summary>
+    private string DestinoDepoisDoLogin()
+        => ReturnUrl is not null && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
+            ? ReturnUrl
+            : "/";
+
+    private class LoginModel
+    {
+        [Required(ErrorMessage = "Informe o login.")]
+        public string Login { get; set; } = "";
+
+        [Required(ErrorMessage = "Informe a senha.")]
+        public string Senha { get; set; } = "";
+    }
+}

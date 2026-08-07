@@ -1,0 +1,36 @@
+@page "/logout"
+@* Mesma razão do Login: SignOutAsync precisa da resposta HTTP, não do circuito. O POST
+   (em vez de um link GET) evita que um site externo derrube a sessão de quem está logado. *@
+@attribute [ExcludeFromInteractiveRouting]
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Endpoints
+@inject NavigationManager NavigationManager
+
+<PageTitle>Sair</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h4 mb-3">Sair do Controlume</h1>
+                <p>Deseja encerrar a sessão?</p>
+
+                <EditForm Model="this" FormName="logout" OnValidSubmit="SairAsync">
+                    <button type="submit" class="btn btn-danger me-2">Sair</button>
+                    <a class="btn btn-outline-secondary" href="/">Cancelar</a>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    private async Task SairAsync()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        NavigationManager.NavigateTo("/login");
+    }
+}

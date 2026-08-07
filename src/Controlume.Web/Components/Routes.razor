@@ -1,6 +1,24 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        @* O endpoint já barra quem não está autenticado no carregamento da página; o
+           AuthorizeRouteView cobre a navegação interativa dentro do circuito, quando o
+           roteamento acontece no cliente e não passa mais pelo middleware. *@
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <h1>Acesso negado</h1>
+                    <p class="text-muted">Seu usuário não tem permissão para acessar esta tela.</p>
+                    <a class="btn btn-outline-secondary" href="/">Voltar para o início</a>
+                }
+                else
+                {
+                    <h1>Sessão expirada</h1>
+                    <p class="text-muted">Entre novamente para continuar.</p>
+                    <a class="btn btn-primary" href="login">Entrar</a>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>

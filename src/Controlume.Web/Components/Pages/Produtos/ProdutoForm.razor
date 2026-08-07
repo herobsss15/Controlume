@@ -1,7 +1,10 @@
 @page "/produtos/novo"
 @page "/produtos/{Id:int}/editar"
+@* Regra 17: Operador não entra no cadastro. Regra 18: Stakeholder entra, mas sem salvar. *@
+@attribute [Authorize(Roles = "Admin,Stakeholder")]
 @inject ProdutoService ProdutoService
 @inject TipoProdutoService TipoProdutoService
+@inject IUsuarioAtual UsuarioAtual
 @inject NavigationManager NavigationManager
 
 <PageTitle>@(Id is null ? "Novo Produto" : "Editar Produto")</PageTitle>
@@ -16,6 +19,8 @@ else
 {
     <EditForm Model="modelo" OnValidSubmit="SalvarAsync" class="col-md-6">
         <DataAnnotationsValidator />
+
+        <fieldset disabled="@(!ehAdmin)">
 
         <div class="mb-3">
             <label class="form-label" for="nome">Nome</label>
@@ -53,8 +58,13 @@ else
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Salvar</button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+        </fieldset>
+
+        @if (ehAdmin)
+        {
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        }
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar">@(ehAdmin ? "Cancelar" : "Voltar")</button>
     </EditForm>
 }
 
@@ -63,6 +73,9 @@ else
 
     private List<TipoProduto>? tipos;
     private ProdutoFormModel modelo = new();
+    private bool ehAdmin;
+
+    protected override async Task OnInitializedAsync() => ehAdmin = await UsuarioAtual.EhAdminAsync();
 
     protected override async Task OnParametersSetAsync()
     {

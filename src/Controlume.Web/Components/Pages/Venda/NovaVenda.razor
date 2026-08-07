@@ -3,10 +3,16 @@
 @inject CaixaService CaixaService
 @inject VendaService VendaService
 @inject VendaEmAndamentoState Carrinho
+@inject IUsuarioAtual UsuarioAtual
 
 <PageTitle>Venda</PageTitle>
 
 <h1>Venda</h1>
+
+@if (!podeEscrever)
+{
+    <div class="alert alert-info">Seu usuário acessa esta tela em modo somente leitura: nenhuma venda pode ser registrada.</div>
+}
 
 @if (carregando)
 {
@@ -66,7 +72,7 @@ else
                                 <td class="text-end">@produto.Preco.ToString("C")</td>
                                 <td class="text-end">@produto.QuantidadeEstoque</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary" disabled="@(produto.QuantidadeEstoque <= 0)" @onclick="() => AdicionarAoCarrinho(produto)">Adicionar</button>
+                                    <button class="btn btn-sm btn-outline-primary" disabled="@(!podeEscrever || produto.QuantidadeEstoque <= 0)" @onclick="() => AdicionarAoCarrinho(produto)">Adicionar</button>
                                 </td>
                             </tr>
                         }
@@ -127,7 +133,7 @@ else
                     <input id="valor-pagamento" type="number" step="0.01" min="0" class="form-control" @bind="valorPagamento" />
                 </div>
                 <div class="col-auto">
-                    <button class="btn btn-outline-primary" @onclick="AdicionarPagamento">Adicionar pagamento</button>
+                    <button class="btn btn-outline-primary" disabled="@(!podeEscrever)" @onclick="AdicionarPagamento">Adicionar pagamento</button>
                 </div>
                 @if (Carrinho.Restante > 0)
                 {
@@ -156,7 +162,7 @@ else
                 Restante: @Carrinho.Restante.ToString("C")
             </p>
 
-            <button class="btn btn-success btn-lg" disabled="@(!PodeConfirmar())" @onclick="ConfirmarAsync">Confirmar venda</button>
+            <button class="btn btn-success btn-lg" disabled="@(!podeEscrever || !PodeConfirmar())" @onclick="ConfirmarAsync">Confirmar venda</button>
             <button class="btn btn-outline-secondary btn-lg" @onclick="Carrinho.Limpar" disabled="@(Carrinho.Itens.Count == 0 && Carrinho.Pagamentos.Count == 0)">Limpar</button>
         </div>
     </div>
@@ -166,6 +172,7 @@ else
     private List<Produto>? produtos;
     private FechamentoCaixa? caixaAberto;
     private bool carregando = true;
+    private bool podeEscrever;
     private string filtro = "";
     private TipoPagamento tipoPagamentoSelecionado = TipoPagamento.Dinheiro;
     private decimal valorPagamento;
@@ -174,6 +181,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        podeEscrever = await UsuarioAtual.PodeEscreverAsync();
         caixaAberto = await CaixaService.ObterAbertoAsync();
         if (caixaAberto is not null)
         {

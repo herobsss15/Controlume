@@ -14,7 +14,9 @@ else if (caixaAberto is null)
 {
     <div class="alert alert-warning d-flex justify-content-between align-items-center">
         <span>Nenhum caixa aberto no momento.</span>
-        <a class="btn btn-primary btn-sm" href="caixa">Abrir caixa</a>
+        <AuthorizeView Roles="Admin,Operador">
+            <a class="btn btn-primary btn-sm" href="caixa">Abrir caixa</a>
+        </AuthorizeView>
     </div>
 }
 else
@@ -32,9 +34,12 @@ else
     <div class="col-md-4">
         <a class="btn btn-outline-primary w-100" href="produtos">Produtos</a>
     </div>
-    <div class="col-md-4">
-        <a class="btn btn-outline-primary w-100" href="tipos-produto">Tipos de Produto</a>
-    </div>
+    @* Regra 17: a tela de tipos é de cadastro, então o Operador nem vê o atalho. *@
+    <AuthorizeView Roles="Admin,Stakeholder">
+        <div class="col-md-4">
+            <a class="btn btn-outline-primary w-100" href="tipos-produto">Tipos de Produto</a>
+        </div>
+    </AuthorizeView>
     <div class="col-md-4">
         <a class="btn btn-outline-secondary w-100" href="caixa">Caixa</a>
     </div>

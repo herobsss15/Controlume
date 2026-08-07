@@ -1,5 +1,7 @@
 @page "/caixa"
 @inject CaixaService CaixaService
+@inject SangriaService SangriaService
+@inject IUsuarioAtual UsuarioAtual
 
 <PageTitle>Caixa</PageTitle>
 
@@ -13,6 +15,19 @@
     </div>
 }
 
+@if (mensagemSucesso is not null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        @mensagemSucesso
+        <button type="button" class="btn-close" @onclick="() => mensagemSucesso = null"></button>
+    </div>
+}
+
+@if (!podeEscrever)
+{
+    <div class="alert alert-info">Seu usuário acessa o caixa em modo somente leitura.</div>
+}
+
 @if (carregando)
 {
     <p>Carregando...</p>
@@ -24,42 +39,132 @@ else if (caixaAberto is null)
             <h2 class="h5">Abrir caixa</h2>
             <div class="mb-3">
                 <label class="form-label" for="valor-inicial">Valor inicial (troco)</label>
-                <input id="valor-inicial" type="number" step="0.01" min="0" class="form-control" @bind="valorInicial" />
+                <input id="valor-inicial" type="number" step="0.01" min="0" class="form-control" disabled="@(!podeEscrever)" @bind="valorInicial" />
+                @if (sugestaoValorInicial > 0)
+                {
+                    <div class="form-text">
+                        Sugerido a partir do saldo final do último fechamento (@sugestaoValorInicial.ToString("C")).
+                        Confira a contagem física e ajuste se precisar.
+                    </div>
+                }
             </div>
-            <button class="btn btn-primary" @onclick="AbrirAsync">Abrir caixa</button>
+            <button class="btn btn-primary" disabled="@(!podeEscrever)" @onclick="AbrirAsync">Abrir caixa</button>
         </div>
     </div>
 }
 else
 {
-    <div class="card col-md-7 mb-4">
-        <div class="card-body">
-            <h2 class="h5">Caixa aberto</h2>
-            <p class="mb-1"><strong>Aberto em:</strong> @caixaAberto.DataAbertura.ToLocalTime().ToString("g")</p>
-            <p class="mb-1"><strong>Valor inicial:</strong> @caixaAberto.ValorInicial.ToString("C")</p>
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h5">Caixa aberto</h2>
+                    <p class="mb-1"><strong>Aberto em:</strong> @caixaAberto.DataAbertura.ToLocalTime().ToString("g")</p>
+                    <p class="mb-1"><strong>Valor inicial:</strong> @caixaAberto.ValorInicial.ToString("C")</p>
 
-            @if (!mostrandoConfirmacaoFechamento)
-            {
-                <button class="btn btn-outline-danger mt-2" @onclick="PrepararFechamentoAsync">Fechar caixa</button>
-            }
-            else if (resumo is not null)
-            {
-                <hr />
-                <h3 class="h6">Resumo para fechamento</h3>
-                <p class="mb-1"><strong>Quantidade de vendas:</strong> @resumo.QuantidadeVendas</p>
-                <p class="mb-1"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
-                @if (resumo.PorFormaPagamento.Count > 0)
-                {
-                    <ul>
-                        @foreach (var forma in resumo.PorFormaPagamento)
+                    @if (resumo is not null)
+                    {
+                        <hr />
+                        <h3 class="h6">Movimento até agora</h3>
+                        <p class="mb-1"><strong>Quantidade de vendas:</strong> @resumo.QuantidadeVendas</p>
+                        <p class="mb-1"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
+                        @if (resumo.PorFormaPagamento.Count > 0)
                         {
-                            <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+                            <ul class="mb-1">
+                                @foreach (var forma in resumo.PorFormaPagamento)
+                                {
+                                    <li>@forma.TipoPagamento.ParaExibicao(): @forma.Total.ToString("C")</li>
+                                }
+                            </ul>
                         }
-                    </ul>
-                }
-                <p class="mb-3"><strong>Total esperado em dinheiro:</strong> @ValorEsperadoEmDinheiro().ToString("C")</p>
-                <button class="btn btn-danger me-2" @onclick="ConfirmarFechamentoAsync">Confirmar fechamento</button>
-                <button class="btn btn-outline-secondary" @onclick="() => mostrandoConfirmacaoFechamento = false">Cancelar</button>
+                        <p class="mb-1"><strong>Sangrias:</strong> −@resumo.TotalSangrias.ToString("C")</p>
+                        <p class="fs-5 mt-2 mb-0">
+                            <strong>Saldo em dinheiro na gaveta:</strong>
+                            <span class="badge text-bg-primary">@resumo.SaldoEmDinheiro.ToString("C")</span>
+                        </p>
+                        <div class="form-text">Inicial + vendas em dinheiro − sangrias. Cartão e Pix não entram nesta conta.</div>
+                    }
+
+                    @if (!mostrandoConfirmacaoFechamento)
+                    {
+                        <button class="btn btn-outline-danger mt-3" disabled="@(!podeEscrever)" @onclick="PrepararFechamentoAsync">Fechar caixa</button>
+                    }
+                    else if (resumo is not null)
+                    {
+                        <hr />
+                        <p class="mb-3">
+                            O caixa será fechado com saldo final de <strong>@resumo.SaldoEmDinheiro.ToString("C")</strong>,
+                            que fica sugerido como valor inicial da próxima abertura.
+                        </p>
+                        <button class="btn btn-danger me-2" disabled="@(!podeEscrever)" @onclick="ConfirmarFechamentoAsync">Confirmar fechamento</button>
+                        <button class="btn btn-outline-secondary" @onclick="() => mostrandoConfirmacaoFechamento = false">Cancelar</button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h5">Sangria</h2>
+                    <p class="text-muted small">Retirada de dinheiro da gaveta. O motivo é obrigatório.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="motivo-sangria">Motivo</label>
+                        <select id="motivo-sangria" class="form-select" disabled="@(!podeEscrever)" @bind="motivoSangria">
+                            <option value="">Selecione...</option>
+                            <option value="@nameof(MotivoSangria.Pagamento)">Pagamento</option>
+                            <option value="@nameof(MotivoSangria.Compra)">Compra</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="valor-sangria">Valor</label>
+                        <input id="valor-sangria" type="number" step="0.01" min="0" class="form-control" disabled="@(!podeEscrever)" @bind="valorSangria" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="descricao-sangria">Descrição <span class="text-muted">(opcional)</span></label>
+                        <input id="descricao-sangria" class="form-control" maxlength="200" placeholder="ex: pagamento fornecedor X"
+                               disabled="@(!podeEscrever)" @bind="descricaoSangria" />
+                    </div>
+
+                    <button class="btn btn-warning" disabled="@(!podeEscrever)" @onclick="RegistrarSangriaAsync">Registrar sangria</button>
+                </div>
+            </div>
+
+            <h2 class="h6">Sangrias deste caixa</h2>
+            @if (sangrias.Count == 0)
+            {
+                <p class="text-muted">Nenhuma sangria registrada.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Motivo</th>
+                            <th class="text-end">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sangria in sangrias)
+                        {
+                            <tr>
+                                <td>@sangria.DataHora.ToLocalTime().ToString("HH:mm")</td>
+                                <td>
+                                    @sangria.Motivo
+                                    @if (!string.IsNullOrWhiteSpace(sangria.Descricao))
+                                    {
+                                        <br /><span class="text-muted small">@sangria.Descricao</span>
+                                    }
+                                </td>
+                                <td class="text-end">@sangria.Valor.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             }
         </div>
     </div>
@@ -68,19 +173,44 @@ else
 @code {
     private FechamentoCaixa? caixaAberto;
     private ResumoCaixa? resumo;
+    private List<Sangria> sangrias = [];
     private bool carregando = true;
     private bool mostrandoConfirmacaoFechamento;
+    private bool podeEscrever;
     private decimal valorInicial;
+    private decimal sugestaoValorInicial;
+    private string motivoSangria = "";
+    private decimal valorSangria;
+    private string? descricaoSangria;
     private string? mensagemErro;
+    private string? mensagemSucesso;
 
-    protected override async Task OnInitializedAsync() => await CarregarAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        podeEscrever = await UsuarioAtual.PodeEscreverAsync();
+        await CarregarAsync();
+    }
 
     private async Task CarregarAsync()
     {
         carregando = true;
         caixaAberto = await CaixaService.ObterAbertoAsync();
+
+        if (caixaAberto is null)
+        {
+            // Regra 15: sugestão vinda do SaldoFinal do último fechamento, sempre editável.
+            sugestaoValorInicial = await CaixaService.ObterSugestaoValorInicialAsync();
+            valorInicial = sugestaoValorInicial;
+            resumo = null;
+            sangrias = [];
+        }
+        else
+        {
+            resumo = await CaixaService.ObterResumoAsync(caixaAberto.Id);
+            sangrias = await SangriaService.ListarPorCaixaAsync(caixaAberto.Id);
+        }
+
         mostrandoConfirmacaoFechamento = false;
-        resumo = null;
         carregando = false;
     }
 
@@ -89,7 +219,6 @@ else
         try
         {
             await CaixaService.AbrirCaixaAsync(valorInicial);
-            valorInicial = 0;
             await CarregarAsync();
         }
         catch (RegraDeNegocioException ex)
@@ -116,21 +245,41 @@ else
             return;
         }
 
-        await CaixaService.FecharCaixaAsync(caixaAberto.Id);
-        await CarregarAsync();
+        try
+        {
+            await CaixaService.FecharCaixaAsync(caixaAberto.Id);
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
     }
 
-    private decimal ValorEsperadoEmDinheiro()
+    private async Task RegistrarSangriaAsync()
     {
-        if (resumo is null)
+        mensagemErro = null;
+        mensagemSucesso = null;
+
+        // Regra 13: sem motivo nem chega no service.
+        if (!Enum.TryParse<MotivoSangria>(motivoSangria, out var motivo))
         {
-            return 0;
+            mensagemErro = "Informe o motivo da sangria (Pagamento ou Compra).";
+            return;
         }
 
-        var totalDinheiro = resumo.PorFormaPagamento
-            .Where(f => f.TipoPagamento == TipoPagamento.Dinheiro)
-            .Sum(f => f.Total);
-
-        return resumo.ValorInicial + totalDinheiro;
+        try
+        {
+            var sangria = await SangriaService.RegistrarAsync(motivo, valorSangria, descricaoSangria);
+            mensagemSucesso = $"Sangria de {sangria.Valor.ToString("C")} registrada.";
+            motivoSangria = "";
+            valorSangria = 0;
+            descricaoSangria = null;
+            await CarregarAsync();
+        }
+        catch (RegraDeNegocioException ex)
+        {
+            mensagemErro = ex.Message;
+        }
     }
 }

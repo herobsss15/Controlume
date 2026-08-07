@@ -1,6 +1,8 @@
-﻿@using System.ComponentModel.DataAnnotations
+@using System.ComponentModel.DataAnnotations
 @using System.Net.Http
 @using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
@@ -12,4 +14,9 @@
 @using Controlume.Web.Components.Layout
 @using Controlume.Web.Domain
 @using Controlume.Web.Services
+@using Controlume.Web.Services.Autorizacao
 @using Controlume.Web.Services.Exceptions
+
+@* Regra 16: exige autenticação em toda página. Quem precisa ser público (login, erro,
+   404) marca [AllowAnonymous], que tem precedência tanto no endpoint quanto no roteamento. *@
+@attribute [Authorize]

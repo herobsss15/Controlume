@@ -1,5 +1,6 @@
 @page "/caixa/historico/{Id:int}"
 @inject CaixaService CaixaService
+@inject SangriaService SangriaService
 
 <PageTitle>Detalhe do Caixa</PageTitle>
 
@@ -14,7 +15,12 @@ else
     <p class="mb-1"><strong>Fechado em:</strong> @(resumo.DataFechamento is null ? "Ainda aberto" : resumo.DataFechamento.Value.ToLocalTime().ToString("g"))</p>
     <p class="mb-1"><strong>Valor inicial:</strong> @resumo.ValorInicial.ToString("C")</p>
     <p class="mb-1"><strong>Quantidade de vendas:</strong> @resumo.QuantidadeVendas</p>
-    <p class="mb-3"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
+    <p class="mb-1"><strong>Total vendido:</strong> @resumo.TotalVendas.ToString("C")</p>
+    <p class="mb-1"><strong>Total de sangrias:</strong> @resumo.TotalSangrias.ToString("C")</p>
+    <p class="mb-3">
+        <strong>@(resumo.SaldoFinal is null ? "Saldo em dinheiro (parcial)" : "Saldo final em dinheiro"):</strong>
+        @((resumo.SaldoFinal ?? resumo.SaldoEmDinheiro).ToString("C"))
+    </p>
 
     @if (resumo.PorFormaPagamento.Count > 0)
     {
@@ -27,6 +33,36 @@ else
         </ul>
     }
 
+    @if (sangrias.Count > 0)
+    {
+        <h2 class="h5">Sangrias</h2>
+        <table class="table table-sm table-striped align-middle" style="max-width: 40rem;">
+            <thead>
+                <tr>
+                    <th>Data/hora</th>
+                    <th>Motivo</th>
+                    <th class="text-end">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sangria in sangrias)
+                {
+                    <tr>
+                        <td>@sangria.DataHora.ToLocalTime().ToString("g")</td>
+                        <td>
+                            @sangria.Motivo
+                            @if (!string.IsNullOrWhiteSpace(sangria.Descricao))
+                            {
+                                <br /><span class="text-muted small">@sangria.Descricao</span>
+                            }
+                        </td>
+                        <td class="text-end">@sangria.Valor.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
     <a class="btn btn-outline-secondary mt-2" href="caixa/historico">Voltar</a>
 }
 
@@ -34,9 +70,11 @@ else
     [Parameter] public int Id { get; set; }
 
     private ResumoCaixa? resumo;
+    private List<Sangria> sangrias = [];
 
     protected override async Task OnParametersSetAsync()
     {
         resumo = await CaixaService.ObterResumoAsync(Id);
+        sangrias = await SangriaService.ListarPorCaixaAsync(Id);
     }
 }
